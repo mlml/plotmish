@@ -1,0 +1,6 @@
+# Ignore everything in this directory
+*
+# Except this file
+!.gitignore
+# this means nothing in this directory can be ever truly checked into
+# the repository -- it only contains local files
