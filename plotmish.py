@@ -35,7 +35,7 @@ from pygame.locals import *
 from subprocess import call, Popen
 import numpy as np
 
-global vowByCode, vowByClass, codes, classes, maxF1,maxF2,minF1,minF2, allvowels, inputType, files, pitchFiles, myfont, DISPLAYSURFACE
+global vowByCode, vowByClass, codes, classes, maxF1,maxF2,minF1,minF2, allvowels, inputType, files, pitchFiles, myfont, DISPLAYSURFACE, maxMin, allLogs, remReason
 
 #set window sizes and frames per second
 FPS = 10
@@ -60,6 +60,9 @@ class vowel:
         self.pPhone = ''
         self.fPhone = ''
         self.maxForm = ''
+        self.oldMaxForm = ''
+        self.minTime = ''
+        self.timeRange = ()
         self.durForms = []
         self.numForms = []
         self.pitch = None
@@ -79,12 +82,28 @@ class vowel:
         newV.maxForm = self.maxForm
         newV.durForms = self.durForms
         newV.numForms = self.numForms
+        newV.timeRange = self.timeRange
         newV.pitch = self.pitch
         newV.F1 = f1
         newV.F2 = f2
         newV.origButton = self.button
         newV.button = newButton
         return newV
+
+
+class plot:
+    def __init__(self):
+        self.top = 10
+        self.bottom = 600
+        self.left = 10
+        self.right = 700
+        self.vowels = []
+        self.displayed = []
+        self.current = None
+        self.minF1 = None
+        self.minF2 = None
+        self.maxF1 = None
+        self.maxF2 = None
 
 #set default black and white colours
 WHITE = (255, 255, 255)
@@ -202,10 +221,10 @@ def writeLogs(allLogs, append = False):
         header = True if not os.path.isfile(os.path.join(args.o,os.path.basename(f).replace('.wav','-corrLog.csv'))) else False
         if args.a or append:
             log = csv.writer(open(os.path.join(args.o,os.path.basename(f).replace('.wav','-corrLog.csv')),'a'))
-            if header: log.writerow(['vowel','word','oldTime','newTime','duration (ms)','stress','maxForms','oldF1','newf1','oldF2','newF2'])
+            if header: log.writerow(['vowel','word','oldTime','time','duration (ms)','stress','maxForms','oldF1','F1','oldF2','F2'])
         else:
             log = csv.writer(open(os.path.join(args.o,os.path.basename(f).replace('.wav','-corrLog.csv')),'wb'))
-            log.writerow(['vowel','word','oldTime','newTime','duration (ms)','stress','maxForms','oldF1','newf1','oldF2','newF2'])
+            log.writerow(['vowel','word','oldTime','time','duration (ms)','stress','maxForms','oldF1','F1','oldF2','F2'])
 
         # write header to log file
         for k,w in writeThis.items():
@@ -268,15 +287,12 @@ def getFiles():
     inputType = 'plt' if '.plt' in files[0][1] else 'txt'
 
 
-def calculateVowelLocation(f, maxMin = None):
-    # calculates the location to display the vowel based on tuple of (F1,F2)
-    (minF1,minF2,maxF1,maxF2)
-    if not maxMin:
-        x = (((maxF2-float(f[1])))/(maxF2-minF2))*(PLOTWIDTH-100)+ 50
-        y = ((float(f[0]) - minF1)/(maxF1-minF1))*(PLOTBOTTOM-100)+ 50
-    else: 
-        x = (((maxMin[3]-float(f[1])))/(maxMin[3]-maxMin[1]))*(PLOTWIDTH-100)+50
-        y = ((float(f[0]) - maxMin[0])/(maxMin[2]-maxMin[0]))*(PLOTBOTTOM-100)+50
+def calculateVowelLocation(f):
+    # calculates the location to display the vowel based on tuple of (F1,F2) 
+    if maxMin == (minF1,minF2,maxF1,maxF2): tempMaxMin = (maxMin[0]-maxMin[2]*0.05, maxMin[1]-maxMin[3]*0.05, maxMin[2]+maxMin[2]*0.05, maxMin[3]+maxMin[3]*0.05)
+    else: tempMaxMin = maxMin    
+    x = (((tempMaxMin[3]-float(f[1])))/(tempMaxMin[3]-tempMaxMin[1]))*(PLOTWIDTH)+10 
+    y = ((float(f[0]) - tempMaxMin[0])/(tempMaxMin[2]-tempMaxMin[0]))*(PLOTBOTTOM)+10 
     return (x,y)
 
 
@@ -546,7 +562,7 @@ def makeButtons():
             classButtons.append(button)
         
     sideButtons = ['Show All', 'Clear', 'Play', 'Std Dev', 'Dur.Filter', 'Zoom'] 
-    if inputType == 'txt': sideButtons += ['Remeasure%']
+    if inputType == 'txt': sideButtons += ['RemeasureP']
     else: sideButtons += ['Praat']
     sideButtons += ['Cancel', 'Rmv. Bad', 'Saved', 'Undo']
     
@@ -572,66 +588,81 @@ def loadingMessage(surface, font, message):
     pygame.display.update()
     surface.fill(WHITE)
 
-def drawGrid(numFont, maxMin):
+def drawGrid(numFont):
     global DISPLAYSURFACE
-    startH = int((580/(maxMin[2]-maxMin[0]))*(math.ceil(maxMin[0]/50.0)*50 - maxMin[0])+10) 
-    intervalH = int((580/(maxMin[2]-maxMin[0]))*50)
-    startV = WINDOWWIDTH - int((690/(maxMin[3]-maxMin[1]))*(math.ceil(maxMin[1]/100.0)*100 - maxMin[1]) + (WINDOWWIDTH-700))
-    intervalV = int((690/(maxMin[3]-maxMin[1]))*100)
+    if maxMin == (minF1,minF2,maxF1,maxF2) : 
+        tempMaxMin = (maxMin[0]-maxMin[2]*0.05, maxMin[1]-maxMin[3]*0.05, maxMin[2]+maxMin[2]*0.05, maxMin[3]+maxMin[3]*0.05)
+        #tempMaxMin = maxMin
+        #startV,startH = calculateVowelLocation((math.ceil(tempMaxMin[1]/100.0)*100 , math.ceil(tempMaxMin[0]/50.0)*50))
+    else: 
+        tempMaxMin = maxMin
+        #startV,startH = calculateVowelLocation((math.ceil(tempMaxMin[1]/100.0)*100 , math.ceil(tempMaxMin[0]/50.0)*50))
+    intervalH = int(((PLOTBOTTOM-10)/(tempMaxMin[2]-tempMaxMin[0]))*50)
+    startH = int(((PLOTBOTTOM-10)/(tempMaxMin[2]-tempMaxMin[0]))*(math.ceil(tempMaxMin[0]/50.0)*50 - tempMaxMin[0])+10)
+    startV = WINDOWWIDTH - int(((PLOTWIDTH-10)/(tempMaxMin[3]-tempMaxMin[1]))*(math.ceil(tempMaxMin[1]/100.0)*100 - tempMaxMin[1]) + (WINDOWWIDTH-PLOTWIDTH))
+    intervalV = int(((PLOTWIDTH-10)/(tempMaxMin[3]-tempMaxMin[1]))*100)
     h,v = (0,0)
     while True:
         hlimit = startH + h*intervalH
-        if hlimit > 590: break
-        pygame.draw.line(DISPLAYSURFACE,Color('grey87') ,(10,hlimit),(700,hlimit)) 
+        if hlimit > PLOTBOTTOM: break
+        pygame.draw.line(DISPLAYSURFACE,Color('grey87') ,(10,hlimit),(PLOTWIDTH,hlimit)) 
         h += 1
     while True:
         vlimit = startV - v*intervalV
         if vlimit < 10: break
-        pygame.draw.line(DISPLAYSURFACE,Color('grey87'),(vlimit,590),(vlimit, 10))
+        pygame.draw.line(DISPLAYSURFACE,Color('grey87'),(vlimit,PLOTBOTTOM),(vlimit, 10))
         v += 1
-    fontMaxMin = [numFont.render(str(int(i)),1,BLACK) for i in maxMin]
-    DISPLAYSURFACE.blit(fontMaxMin[0],(700-numFont.size(str(int(minF1)))[0],numFont.size(str(int(minF1)))[1]+10))
-    DISPLAYSURFACE.blit(fontMaxMin[1],(700-numFont.size(str(int(minF2)))[0]-10,10))
-    DISPLAYSURFACE.blit(fontMaxMin[2],(700-numFont.size(str(int(maxF1)))[0], 590-numFont.size(str(int(minF1)))[1]))
+    fontMaxMin = [numFont.render(str(int(i)),1,BLACK) for i in tempMaxMin]
+    DISPLAYSURFACE.blit(fontMaxMin[0],(PLOTWIDTH-numFont.size(str(int(minF1)))[0],numFont.size(str(int(minF1)))[1]+10))
+    DISPLAYSURFACE.blit(fontMaxMin[1],(PLOTWIDTH-numFont.size(str(int(minF2)))[0]-10,10))
+    DISPLAYSURFACE.blit(fontMaxMin[2],(PLOTWIDTH-numFont.size(str(int(maxF1)))[0], PLOTBOTTOM-numFont.size(str(int(minF1)))[1]))
     DISPLAYSURFACE.blit(fontMaxMin[3],(12, 10))
 
 
-def resize(maxMin, vowButtonList, vowList, currentVowel):
-    tempf1 = []
-    tempf2 = []
-    if maxMin != (minF1,minF2,maxF1,maxF2):
-        for v in vowButtonList:
-            loc = v.button.rect.center
-            if loc[0] > maxMin[3] and loc[0] < maxMin[1] and loc[1] > maxMin[0] and loc[1] < maxMin[2]:
-                tempf1 += [v.F1]
-                tempf2 += [v.F2]
-        try: maxMin = [min(tempf1), min(tempf2), max(tempf1), max(tempf2)]
-        except:
-            print 'no vowels in range'
-            maxMin = None
-    else: maxMin = None
+def resize(tempMaxMin, vowButtonList, currentVowel):
+    global maxMin
+    if tempMaxMin != (minF1,minF2,maxF1,maxF2):
+        temp = [None,None,None,None]
+        temp[0] = (maxF1-minF1)*(tempMaxMin[0]/float(PLOTBOTTOM-10))+minF1
+        temp[1] = maxF2-((maxF2-minF2)*(tempMaxMin[1]/float(PLOTWIDTH-10)))
+        temp[2] = (maxF1-minF1)*(tempMaxMin[2]/float(PLOTBOTTOM-10))+minF1
+        temp[3] = maxF2-((maxF2-minF2)*(tempMaxMin[3]/float(PLOTWIDTH-10)))    
+        maxMin = tuple(temp)
+    else: 
+        maxMin = (minF1,minF2,maxF1,maxF2)
     for v in vowButtonList:
-        print v.F1, v.F2
-        x,y = calculateVowelLocation((v.F1,v.F2), maxMin)
-        buttonRect = pygame.Rect(x,y, 8, 8)
-        buttonRect.center = (x,y)
-        v.button.rect = buttonRect
-    for v in vowList:
-        x,y = calculateVowelLocation((v.F1,v.F2), maxMin)
-        buttonRect = pygame.Rect(x,y, 8, 8)
-        buttonRect.center = (x,y)
-        v.button.rect = buttonRect
+        x,y = calculateVowelLocation((v.F1,v.F2))
+        v.button.rect.center = (x,y)
     if currentVowel:
-        x,y = calculateVowelLocation((currentVowel.F1,currentVowel.F2), maxMin)
-        buttonRect = pygame.Rect(x,y, 8, 8)
-        buttonRect.center = (x,y)
-        currentVowel.button.rect = buttonRect
-    if maxMin == None: return ((minF1,minF2,maxF1,maxF2), vowButtonList, vowList, currentVowel)
-    return (maxMin, vowButtonList, vowList, currentVowel)
+        x,y = calculateVowelLocation((currentVowel.F1,currentVowel.F2))
+        currentVowel.button.rect.center = (x,y)
+    return (vowButtonList, currentVowel)
+
+def clearRange(tempMaxMin, vowButtonList, currentVowel, reason):
+    tempVBL, tempVL = [],[]
+    for v in vowButtonList:
+        x,y = v.button.rect.center
+        if not (y > tempMaxMin[0] and x < tempMaxMin[1] and y < tempMaxMin[2] and x > tempMaxMin[3]):
+            tempVBL += [v]
+        else:
+            clear(v, reason)
+    if currentVowel:
+        x,y = currentVowel.button.rect.center
+        currentVowel = currentVowel if not (y > tempMaxMin[0] and x < tempMaxMin[1] and y < tempMaxMin[2] and x > tempMaxMin[3]) else None 
+    return (tempVBL, currentVowel) 
+
+
+def clear(currentVowel, reason):
+    global allLogs, remReason                           
+    outCode = codes[currentVowel.vowelCode] if inputType == 'plt' else arpCodes[currentVowel.vowelCode]
+    because = 'unallowed variant' if not remReason and not reason else remReason+' '+reason
+    because = 'removed: '+because if not remReason else because
+    newInfo = [str(wr) for wr in [outCode,currentVowel.word,'NA',currentVowel.time,currentVowel.duration,currentVowel.stress,currentVowel.maxForm,'NA','NA','NA','NA',because]]
+    allLogs[currentVowel.wFile][currentVowel.time] = newInfo 
 
 
 def main(): 
-    global files, myfont, DISPLAYSURFACE, FPS
+    global files, myfont, DISPLAYSURFACE, FPS, maxMin, allLogs, remReason
     getFiles()
     mapToCelex.changeCelexPath('support_scripts/celex.cd')
     windowBgColor = WHITE       #set background colour
@@ -650,7 +681,7 @@ def main():
     else: getVowelsTxt()
     maxMin = (minF1,minF2,maxF1,maxF2)
     F1,F2 = (myfont.render('F1',1,Color('grey87')),myfont.render('F2',1,Color('grey87')))
-    drawGrid(numFont, maxMin)
+    drawGrid(numFont)
     permButtons = makeButtons() # make permanent buttons (vowel buttons, display all/none buttons, class buttons)
     permDisplay = permButtons[0]+permButtons[1]+permButtons[2]+permButtons[3] 
     vowButtons =  makeVowels() # makes buttons according to each vowel in the .plt file
@@ -667,7 +698,7 @@ def main():
     stdDevCounter = 0
     ellip = []
     formType = 'dur'
-    praatMode = False
+    praatMode = True if os.path.isdir(args.p) else False
     praatLog = os.path.join(os.getcwd(),'praatLog')
     call(['rm', praatLog])
     praatInfo = []
@@ -675,7 +706,6 @@ def main():
     minDur = None
     stressFiltered = []
     vowelChange = True
-    remeasureForms = True
     firstSave = False
     arpDisplayed = []
     celDisplayed = []
@@ -686,6 +716,8 @@ def main():
     zooming = False
     start, stop = (),()
     zoomLines = None
+    ctrl = [K_RCTRL, K_LCTRL] 
+    shft = [K_RSHIFT, K_LSHIFT]
     while True: # main loop
         for event in pygame.event.get(): # event handling loop
             if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE): # process when quitting plotmish
@@ -698,31 +730,38 @@ def main():
                 pygame.quit() 
                 sys.exit()            
             # display buttons when clicked
-            if zooming:
+            pressed = pygame.key.get_pressed()
+            pressCTRLA = (pressed[ctrl[0]] or pressed[ctrl[1]]) and pressed[K_a]
+            if zooming or pressCTRLA:
                 T,L,B,R = None,None,None,None 
                 if event.type == MOUSEBUTTONDOWN:
                     start = pygame.mouse.get_pos()
                     FPS = 50
                 elif start: 
                     stop = pygame.mouse.get_pos() 
-                    T,B = (start[0],stop[0]) if start[0] < stop[0] else (stop[0],start[0])
-                    L,R = (start[1],stop[1]) if start[1] < stop[1] else (stop[1],start[1])
-                    zoomLines = [(T,L),(T,R),(B,R),(B,L)]
+                    L,R = (start[0],stop[0]) if start[0] < stop[0] else (stop[0],start[0])
+                    T,B = (start[1],stop[1]) if start[1] < stop[1] else (stop[1],start[1])
+                    zoomLines = [(L,T),(R,T),(R,B),(L,B)]
                     vowelChange = True                    
                     if event.type == MOUSEBUTTONUP:
                         if not (L < 10 or R > PLOTWIDTH or T < 10 or B > PLOTBOTTOM or T == B or L == R):
-                            FPS = 30
-                            maxMin, vowButtonList, vowList, currentVowel = resize((T,R,B,L), vowButtonList, vowList, currentVowel)
-                            zooming = False
-                            for b in permButtons[1]:
-                                if b.caption == 'Zoom':
-                                    b.caption = 'Reset Zoom'
+                            FPS = 10
+                            if pressCTRLA:
+                                reason = ''
+                                if (pressed[shft[0]] or pressed[shft[1]]): 
+                                    while not reason:
+                                        reason = inputbox.ask(DISPLAYSURFACE,'Reason ')
+                                displayMemory += [[v for v in vowButtonList]]
+                                logMemory += [copy.deepcopy(allLogs)]
+                                vowButtonList, currentVowel = clearRange((T,R,B,L), vowButtonList, currentVowel, reason)
+                                if not currentVowel: textList = []
+                            else:
+                                vowButtonList, currentVowel = resize((T,R,B,L), vowButtonList, currentVowel)
+                                for b in permButtons[1]:
+                                    if b.caption == 'Zoom':
+                                        b.caption = 'Reset Zoom'
                         zoomLines = None
                         start, stop = (),()
-                        newMinF1, newMaxF1, newMinF2, newMaxF2 = None,None,None,None
-
-
-
             if not chooseFormants:   
                 for b in permButtons[0]: # displays vowels on the screen when the corresponding vowel or diphthong button in clicked
                     if 'click' in b.handleEvent(event):
@@ -799,19 +838,16 @@ def main():
                         if 'Remeasure' in b.caption:
                             if b.caption == 'Remeasure%':
                                 formType = 'num'
-                                remeasureForms = True
                                 b.caption = 'RemeasureF'
                             elif b.caption == 'RemeasureF':
                                 if os.path.isdir(args.p):
                                     praatMode = True
                                     b.caption = 'RemeasureP'
                                 else: 
-                                    remeasureForms = False
                                     formType = 'dur'
                                     b.caption = 'Remeasure%'
                             else:                        
                                 praatMode = False
-                                remeasureForms = False
                                 formType = 'dur'
                                 b.caption = 'Remeasure%'
                         
@@ -892,15 +928,14 @@ def main():
                             vowelChange = True
 
                         if b.caption == 'Undo':
-                            try:
-                                lastdisplay = displayMemory.pop()
-                                vowButtonList = lastdisplay
-                                vowelChange = True
-                                allLogs = copy.deepcopy(logMemory.pop())
-                            except: pass
+                            print len(vowButtonList)
+                            vowButtonList = displayMemory.pop()
+                            allLogs = copy.deepcopy(logMemory.pop())
                             if len(displayMemory) < 2: displayMemory = [[v for v in vowButtonList]]
                             if len(logMemory) <2: logMemory = [copy.deepcopy(allLogs)]
-                
+                            vowelChange = True
+                            print len(vowButtonList)
+                        
                         if b.caption == 'Rmv. Bad':
                             b.caption = 'Rmv. OK'
                             remReason = 'OK'
@@ -909,6 +944,7 @@ def main():
                             remReason = ''
 
                         if b.caption == 'Zoom':
+                            b.font.set_bold(False)
                             if b.bgcolor == Color('darkolivegreen2'):
                                 zooming = True
                                 b.bgcolor = Color('darkolivegreen4')
@@ -918,9 +954,9 @@ def main():
                                 b.bgcolor = Color('darkolivegreen2')
                                 start, stop = (),()
                         elif b.caption == 'Reset Zoom':
-                            maxMin = (minF1,minF2,maxF1,maxF2)
-                            maxMin, vowButtonList, vowList, currentVowel = resize(maxMin, vowButtonList, vowList, currentVowel) 
-                            b.bgcolor = Color('darkolivegreen2')
+                            b.font.set_bold(False)
+                            vowButtonList, currentVowel = resize((minF1,minF2,maxF1,maxF2), vowButtonList, currentVowel) 
+                            #b.bgcolor = Color('darkolivegreen2')
                             b.caption = 'Zoom'
                             vowelChange = True
 
@@ -947,50 +983,25 @@ def main():
                         minDur = None
                         vowelChange = True
                 
-                if vowelChange:
-                    vowList = []
-                    if inputType == 'txt':
-                        if vowelMode == 'intersect':
-                            for v in vowButtonList:    
-                                    if (arpCodes[v.vowelCode] in arpDisplayed) and (v.celex in celDisplayed):
-                                        vowList += [v] if v not in filtered else []
-                        else: 
-                            for v in vowButtonList:    
-                                    if (arpCodes[v.vowelCode] in arpDisplayed) or (v.celex in celDisplayed):
-                                        vowList += [v] if  v not in filtered else []
-                    else: 
-                        for b in permButtons[0]:
-                            for v in vowButtonList:
-                                vowList += [v] if b.bgcolor == v.button.fgcolor and b.caption in arpDisplayed and v not in filtered else []
-
 
                 if currentVowel:
-                    if 'click' in currentVowel.button.handleEvent(event):
-                        ctrl = [K_RCTRL, K_LCTRL] 
-                        shft = [K_RSHIFT, K_LSHIFT]
-                        pressed = pygame.key.get_pressed()
+                    if 'click' in currentVowel.button.handleEvent(event) and not pressCTRLA:
+                        displayMemory += [[v for v in vowButtonList]]
+                        logMemory += [copy.deepcopy(allLogs)]
                         if pressed[ctrl[0]] or pressed[ctrl[1]]:
+                            vowelChange = True
                             reason = ''
                             if pressed[shft[0]] or pressed[shft[1]]:
                                 while not reason:
                                     reason = inputbox.ask(DISPLAYSURFACE,'Reason ')
-                            outCode = codes[currentVowel.vowelCode] if inputType == 'plt' else arpCodes[currentVowel.vowelCode]
-                            because = 'unallowed variant' if not remReason and not reason else remReason+' '+reason
-                            because = 'removed: '+because if not remReason else because
-                            newInfo = [str(wr) for wr in [outCode,currentVowel.word,'NA',currentVowel.time,currentVowel.duration,currentVowel.stress,currentVowel.maxForm,'NA','NA','NA','NA',because]]
-                            displayMemory += [[v for v in vowButtonList]]
-                            logMemory += [copy.deepcopy(allLogs)]
-                            allLogs[currentVowel.wFile][currentVowel.time] = newInfo
+                            clear(currentVowel, reason)
                             vowButtonList.remove(currentVowel)
-                            vowList.remove(currentVowel)
+                            #vowList.remove(currentVowel)
                             currentVowel = None
                             textList = []
-                            vowelChange = True
 
                         
                         else:    
-                            displayMemory += [[v for v in vowButtonList]]
-                            logMemory += [copy.deepcopy(allLogs)]
                             if praatMode:
                                 message = 'runScript: \"support_scripts/zoomIn.praat\", %r, %r' % (currentVowel.wFile,float(currentVowel.time))
                                 call(['open', args.p])
@@ -1017,6 +1028,21 @@ def main():
                             xFormButtons += [alt]
                             chooseFormants = True
 
+                if vowelChange:
+                    vowList = []
+                    if inputType == 'txt':
+                        if vowelMode == 'intersect':
+                            for v in vowButtonList:    
+                                    if (arpCodes[v.vowelCode] in arpDisplayed) and (v.celex in celDisplayed):
+                                        vowList += [v] if v not in filtered else []
+                        else: 
+                            for v in vowButtonList:    
+                                    if (arpCodes[v.vowelCode] in arpDisplayed) or (v.celex in celDisplayed):
+                                        vowList += [v] if  v not in filtered else []
+                    else: 
+                        for b in permButtons[0]:
+                            for v in vowButtonList:
+                                vowList += [v] if b.bgcolor == v.button.fgcolor and b.caption in arpDisplayed and v not in filtered else []
                 for v in vowList: # deal with all vowels currently displayed on screen
                     if 'enter' in v.button.handleEvent(event):
                         #f,g = v[1],v[2]
@@ -1129,8 +1155,8 @@ def main():
                 pygame.draw.rect(DISPLAYSURFACE,WHITE,r)
         
         if ellip and vowelChange: DISPLAYSURFACE.blit(ellip[0],ellip[1])
-        pygame.draw.lines(DISPLAYSURFACE,BLACK,True,[(490,600),(700,600),(700,840),(490,840)],2) # draw rectangle to display vowel info
-        pygame.draw.lines(DISPLAYSURFACE,BLACK,True, [(10,10),(700,10),(700,590),(10,590)],2) # draw rectangle to display vowel buttons
+        pygame.draw.lines(DISPLAYSURFACE,BLACK,True, [(490,PLOTBOTTOM),(PLOTWIDTH,PLOTBOTTOM),(PLOTWIDTH,840),(490,840)],2) # draw rectangle to display vowel info
+        pygame.draw.lines(DISPLAYSURFACE,BLACK,True, [(10,10),(PLOTWIDTH,10),(PLOTWIDTH,PLOTBOTTOM),(10,PLOTBOTTOM)],2) # draw rectangle to display vowel buttons
         tokenNum = myfont.render(str(len(vowList)),1,BLACK)
         DISPLAYSURFACE.blit(tokenNum,(710,820))
         pygame.draw.lines(DISPLAYSURFACE,BLACK,True,[(10,630),(185,630),(185,840),(10,840)],2)
@@ -1163,12 +1189,11 @@ def main():
         if vowelChange:
             DISPLAYSURFACE.blit(F1,(PLOTWIDTH-myfont.size('F1')[0],PLOTBOTTOM/2))
             DISPLAYSURFACE.blit(F2,(PLOTWIDTH/2,10))
-            drawGrid(numFont, maxMin)
+            drawGrid(numFont)
             for b in [v.button for v in vowList]:
                 b.draw(DISPLAYSURFACE)
             vowelChange = False
             if zoomLines: pygame.draw.lines(DISPLAYSURFACE,BLACK,True,zoomLines,1)
-        
         pygame.display.update() # update screen
         FPSCLOCK.tick(FPS) # screen updates at 30 frames per second
 
