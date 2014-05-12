@@ -1,5 +1,5 @@
 procedure name_in_objects_list .path$ .name$ .type$
-
+## from original plotnik file##
 	## converts absolute path name of file to be opened into name of that file in the objects list
 	## 1) chop off all path prefixes
 	last_slash = rindex(.path$, "/")
@@ -32,10 +32,14 @@ endproc
 form Get input file names and time of measurement
 	sentence Path_of_sound_file
 	sentence Current_dir 
-	real Time_of_measurement 
+	real time_of_measurement
+	real play_me
+	real maxForms 
 endform
 
+
 Open long sound file... 'Path_of_sound_file$'
+
 call name_in_objects_list "'Path_of_sound_file$'" name_of_sound_file_in_objects_list$ "LongSound"
 select LongSound 'name_of_sound_file_in_objects_list$'
 
@@ -45,8 +49,11 @@ editor LongSound 'name_of_sound_file_in_objects_list$'
 
 Log settings... "Log file only" 'Current_dir$' "'time''tab$''f1:0''tab$''f2:0''tab$''f0:0'" "Log file only" 'Current_dir$' "'time:6''tab$''f0:2'" 'Current_dir$' 'Current_dir$'  
 
+Formant settings... "5500" 'maxForms' "0.025" "30" 1
+
 zoom_start = time_of_measurement - 0.25
 zoom_end = time_of_measurement + 0.25
+
 
 Zoom... zoom_start zoom_end
 
@@ -55,16 +62,7 @@ Zoom... zoom_start zoom_end
 ## move cursor to point of measurement
 Move cursor to... 'time_of_measurement'
 
-
-## Play window
-Play window
-
-
-
-#while 1
-#beginPause: "Remeasure"
-#    choice: " ", 1
-#	option: "Remeasure"
-#clicked = endPause: "OK", 1
-#Log 1
-#endwhile
+if play_me == 1
+	## Play window
+	Play window
+endif
