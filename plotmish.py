@@ -274,10 +274,11 @@ def getFiles():
 
 def calculateVowelLocation(f):
     # calculates the location to display the vowel based on tuple of (F1,F2) 
-    if maxMin == (minF1,minF2,maxF1,maxF2): tempMaxMin = (maxMin[0]-maxMin[2]*0.05, maxMin[1]-maxMin[3]*0.05, maxMin[2]+maxMin[2]*0.05, maxMin[3]+maxMin[3]*0.05)
-    else: tempMaxMin = maxMin    
-    x = (((tempMaxMin[3]-float(f[1])))/(tempMaxMin[3]-tempMaxMin[1]))*(PLOTWIDTH)+10 
-    y = ((float(f[0]) - tempMaxMin[0])/(tempMaxMin[2]-tempMaxMin[0]))*(PLOTBOTTOM)+10 
+    #if maxMin == (minF1,minF2,maxF1,maxF2): tempMaxMin = (maxMin[0]-maxMin[2]*0.05, maxMin[1]-maxMin[3]*0.05, maxMin[2]+maxMin[2]*0.05, maxMin[3]+maxMin[3]*0.05)
+    #else: tempMaxMin = maxMin    
+    tempMaxMin = maxMin
+    x = (((tempMaxMin[3]-float(f[1])))/(tempMaxMin[3]-tempMaxMin[1]))*(PLOTWIDTH-20)+10 
+    y = ((float(f[0]) - tempMaxMin[0])/(tempMaxMin[2]-tempMaxMin[0]))*(PLOTBOTTOM-20)+10
     return (x,y)
 
 
@@ -589,6 +590,7 @@ def drawGrid(numFont):
     else: 
         tempMaxMin = maxMin
         #startV,startH = calculateVowelLocation((math.ceil(tempMaxMin[1]/100.0)*100 , math.ceil(tempMaxMin[0]/50.0)*50))
+    tempMaxMin = maxMin
     intervalH = int(((PLOTBOTTOM-10)/(tempMaxMin[2]-tempMaxMin[0]))*50)
     startH = int(((PLOTBOTTOM-10)/(tempMaxMin[2]-tempMaxMin[0]))*(math.ceil(tempMaxMin[0]/50.0)*50 - tempMaxMin[0])+10)
     startV = WINDOWWIDTH - int(((PLOTWIDTH-10)/(tempMaxMin[3]-tempMaxMin[1]))*(math.ceil(tempMaxMin[1]/100.0)*100 - tempMaxMin[1]) + (WINDOWWIDTH-PLOTWIDTH))
@@ -753,6 +755,7 @@ def main():
                                 for b in permButtons[1]:
                                     if b.caption == 'Zoom':
                                         b.caption = 'Reset Zoom'
+                                        b.font.set_bold(False)
                         zoomLines = None
                         start, stop = (),()
 
