@@ -557,13 +557,14 @@ def makeButtons():
     sideButtons = ['Show All', 'Clear', 'Play', 'Std Dev', 'Dur.Filter', 'Zoom'] 
     if inputType == 'txt': sideButtons += ['RemeasureP']
     else: sideButtons += ['Praat']
-    sideButtons += ['Cancel', 'Rmv. Bad', 'Saved', 'Undo', 'Check Last']
+    sideButtons += ['Cancel', 'Saved', 'Undo', 'Check Last', 'Rmv. Bad']
     
     lowest = 0
     for i,c in enumerate(sideButtons):
         button = pygbutton.PygButton((705, 10+(i*40), 110, 30), c)
         lowest = 10+(i*40)+40
-        button.bgcolor = Color('darkolivegreen2')
+        if button.caption == 'Rmv. Bad': button.bgcolor = Color('red')
+        else: button.bgcolor = Color('darkolivegreen2')
         onOffButtons.append(button)    
     
     for i,c in enumerate(['1','2','0']):
@@ -944,8 +945,10 @@ def main():
                         
                         if b.caption == 'Rmv. Bad':
                             b.caption = 'Rmv. OK'
+                            b.bgcolor = Color('lightskyblue')
                             remReason = 'OK'
                         elif b.caption == 'Rmv. OK':
+                            b.bgcolor = Color('red')
                             b.caption = 'Rmv. Bad'
                             remReason = ''
 
