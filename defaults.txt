@@ -1,4 +1,5 @@
 formant	/Users/misha/Desktop/epFormants
+output	/Users/misha/plotmish/log
 log	/Users/misha/plotmish/log
 keyword	Darnell-4210
 overwrite	True
@@ -6,4 +7,4 @@ wav	/Users/misha/Desktop/epWavs
 corrected	/Users/misha/plotmish/corrected
 praat	/Applications/Praat.app
 pitch tracks	
-output	/Users/misha/plotmish/log
+annotator	MS2

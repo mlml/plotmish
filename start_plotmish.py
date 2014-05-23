@@ -5,7 +5,7 @@ sys.path.append('plotmish/support_scripts')
 
 import pygame, pygbutton, inputbox
 
-WINDOWWIDTH, WINDOWHEIGHT = 500, 600
+WINDOWWIDTH, WINDOWHEIGHT = 500, 700
 
 captionFont = pygame.font.SysFont('courier',16)
 
@@ -37,11 +37,12 @@ args =	{	'formant' : '',
 			'praat' : '',
 			'pitch tracks' : '',
 			'overwrite' : False,
-			'corrected': '' }
+			'corrected': '', 
+			'annotator': ''}
 
 defaultsPath = os.path.join(os.getcwd(),'plotmish','defaults.txt')
 
-akeys = {0:'formant',1:'wav',2:'keyword', 3:'log',4:'praat',5:'pitch tracks',6:'corrected'}
+akeys = {0:'formant',1:'wav',2:'keyword', 3:'log',4:'praat',5:'pitch tracks',6:'corrected', 7: 'annotator'}
 
 
 def writeDefaults():
@@ -95,6 +96,9 @@ def checkDefaults():
 				bad.append(k+' path does not exist')
 			elif not v:
 				bad.append('no entry for '+k)
+		if k == 'annotator':
+			if not v:
+				bad.append('no entry for '+k)
 	return bad
 	
 root = os.path.abspath(os.sep)
@@ -142,17 +146,18 @@ textbuttons = [	button(rect = pygame.Rect(20, 100, 460, 20),caption = args['form
  				button(rect = pygame.Rect(20, 250, 460, 20),caption = args['log'], border = False, bgcolor = GREY, fgcolor = WHITE),
  				button(rect = pygame.Rect(20, 300, 460, 20),caption = args['praat'], border = False, bgcolor = GREY, fgcolor = WHITE),
  				button(rect = pygame.Rect(20, 350, 460, 20),caption = args['pitch tracks'], border = False, bgcolor = GREY, fgcolor = WHITE),
- 				button(rect = pygame.Rect(20, 400, 460, 20),caption = args['corrected'], border = False, bgcolor = GREY, fgcolor = WHITE)]
+ 				button(rect = pygame.Rect(20, 400, 460, 20),caption = args['corrected'], border = False, bgcolor = GREY, fgcolor = WHITE), 
+ 				button(rect = pygame.Rect(20, 450, 460, 20),caption = args['annotator'], border = False, bgcolor = GREY, fgcolor = WHITE)]
 
-onoffbuttons = [ button(rect = pygame.Rect(20, 450, 200, 20), caption = 'Overwrite Log Files' if args['overwrite'] else 'Append to Log files', bgcolor = pygame.Color('gray46')),
-				 button(rect = pygame.Rect(270, 450, 200, 20), caption = 'Make Pitch Tracks'),
-				 button(rect = pygame.Rect(20, 500, 200, 20), caption = 'Set As Default'),
-				 button(rect = pygame.Rect(270, 500, 200, 20), caption = 'Update Formants'),
-				 button(rect = pygame.Rect(0, 550, 200, 20), caption = 'Start Plotmish')]
+onoffbuttons = [ button(rect = pygame.Rect(20, 500, 200, 20), caption = 'Overwrite Log Files' if args['overwrite'] else 'Append to Log files', bgcolor = pygame.Color('gray46')),
+				 button(rect = pygame.Rect(270, 500, 200, 20), caption = 'Make Pitch Tracks'),
+				 button(rect = pygame.Rect(20, 550, 200, 20), caption = 'Set As Default'),
+				 button(rect = pygame.Rect(270, 550, 200, 20), caption = 'Update Formants'),
+				 button(rect = pygame.Rect(0, 600, 200, 20), caption = 'Start Plotmish')]
 
 onoffbuttons[-1].rect.centerx = WINDOWWIDTH/2.0
 
-errorButton = button(rect = pygame.Rect(270, 500, 200, 20), caption = 'BACK')
+errorButton = button(rect = pygame.Rect(270, 550, 200, 20), caption = 'BACK')
 errorButton.rect.centerx = WINDOWWIDTH/2.0
 
 buttons = textbuttons + onoffbuttons
@@ -163,7 +168,8 @@ text = 	[ 	(captionFont.render('formant.txt files:',1,BLACK),(20,82)),
 			(captionFont.render('log folder:',1,BLACK),(20,232)),
 			(captionFont.render('praat:',1,BLACK),(20,282)),
 			(captionFont.render('pitch tracks:',1,BLACK),(20,332)),
-			(captionFont.render('corrected folder:',1,BLACK),(20,382))]
+			(captionFont.render('corrected folder:',1,BLACK),(20,382)),
+			(captionFont.render('annotator:',1,BLACK),(20,432))]
 
 mode = 'main'
 
@@ -180,7 +186,7 @@ while True: # main loop
 					if answer == 'QUITNOW':
 						pygame.quit() 
 						sys.exit()
-					b.caption = shortcut(answer) if i != 2 else answer
+					b.caption = shortcut(answer) if i not in [2,7] else answer
 					updateArgs() 
 
 		
@@ -215,13 +221,12 @@ while True: # main loop
 					if b.caption == 'Start Plotmish':
 						errors = [e for e in checkDefaults() if 'corrected' not in e]
 						if not errors:
-							message = ['python', plotmish, args['formant'], args['wav'], '-k', args['keyword'], '-o', args['log'], '-p', args['praat'], '-f0', args['pitch tracks']] 
+							message = ['python', plotmish, args['formant'], args['wav'],args['annotator'], '-k', args['keyword'], '-o', args['log'], '-p', args['praat'], '-f0', args['pitch tracks']] 
 							if not args['overwrite']:
 								message += ['-a']
 							subprocess.call(['cd', 'plotmish'])
-							subprocess.Popen(message)
-							pygame.quit() 
-							sys.exit()
+							subprocess.call(message)
+
 						else:
 							mode = 'error'
 
