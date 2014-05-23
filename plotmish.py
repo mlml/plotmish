@@ -29,10 +29,13 @@ by: Misha Schwartz
 
 import pygame, sys, argparse, os, re, csv, math, copy
 from glob import glob
+from subprocess import call, Popen
+if os.path.isdir('plotmish'):
+    os.chdir('plotmish')
 sys.path.append('support_scripts')
 import pygbutton, inputbox, mapToCelex
 from pygame.locals import *
-from subprocess import call, Popen
+
 import numpy as np
 
 global vowByCode, vowByClass, codes, classes, maxF1,maxF2,minF1,minF2, allvowels, inputType, files, pitchFiles, myfont, DISPLAYSURFACE, maxMin, allLogs, remReason
@@ -263,14 +266,34 @@ def getFiles():
         if '.plt' in f: both += 'plt'
         if 'formant.txt' in f: both += 'txt'
     if 'txt' in both and 'plt' in both:
+        '''
         response = ''
         while response not in ['p','t']:
             response = raw_input('Found both text files and plotnik files \nWhich file type do you want to use? \n(p)lotnik or (t)ext:  ') 
         response = '.plt' if response == 'p' else 'formant.txt'
+        '''
+        response = pltOrTxt()
         files = [f for f in files if response in f[1]]
     assert files, 'ERROR: no files found'
     inputType = 'plt' if '.plt' in files[0][1] else 'txt'
 
+
+def pltOrTxt():
+    message = ['Found both text files and plotnik files','Which file type do you want to use?', 'Text files are recomended']
+    loadingMessage(DISPLAYSURFACE,myfont,message)
+    ptButtons = [pygbutton.PygButton((WINDOWWIDTH/2.0 - 120, WINDOWHEIGHT/2.0 + 80, 60, 30), caption = 'text', font = myfont),pygbutton.PygButton((WINDOWWIDTH/2.0 +60, WINDOWHEIGHT/2.0 + 80, 60, 30), caption = 'plotnik', font = myfont)]
+    while True:
+        for event in pygame.event.get():
+            if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
+                pygame.quit() 
+                sys.exit()
+            for b in ptButtons:
+                if 'click' in b.handleEvent(event):
+                    return '.plt' if b.caption == 'plotnik' else 'formant.txt'
+        for b in ptButtons:
+            b.draw(DISPLAYSURFACE)
+        pygame.display.update() # update screen
+        FPSCLOCK.tick(FPS)
 
 def calculateVowelLocation(f):
     # calculates the location to display the vowel based on tuple of (F1,F2) 
@@ -580,7 +603,7 @@ def loadingMessage(surface, font, message):
         mess = font.render(m,1,BLACK)
         surface.blit(mess,(WINDOWWIDTH/2.0-(font.size(m)[0]/2.0),WINDOWHEIGHT/2.0-(font.size(m)[1]/2.0)+(i*(font.size(m)[1])+5)))
     pygame.display.update()
-    surface.fill(WHITE)
+    #surface.fill(WHITE)
 
 def drawGrid(numFont):
     global DISPLAYSURFACE
@@ -657,18 +680,18 @@ def clear(currentVowel, reason):
 
 
 def main(): 
-    global files, myfont, DISPLAYSURFACE, FPS, maxMin, allLogs, remReason
-    getFiles()
-    mapToCelex.changeCelexPath('support_scripts/celex.cd')
+    global files, myfont, DISPLAYSURFACE, FPS, maxMin, allLogs, remReason, FPSCLOCK
     windowBgColor = WHITE       #set background colour
     pygame.init()               # initialize pygame
+    FPSCLOCK = pygame.time.Clock()      #initialize clock 
     DISPLAYSURFACE = pygame.display.set_mode((WINDOWWIDTH, WINDOWHEIGHT)) # create window according to dimensions 
     myfont = pygame.font.SysFont('helvetica',20)    # set font
     numFont = pygame.font.SysFont('helvetica',15)
+    getFiles()
+    mapToCelex.changeCelexPath('support_scripts/celex.cd')
     allLogs = {f[0]:{} for f in files}
     # main function that implements pygame  
     textListFont = pygame.font.SysFont('courier',18)
-    FPSCLOCK = pygame.time.Clock()      #initialize clock 
     caption = 'Plotmish - '+args.k if args.k else 'Plotmish'
     pygame.display.set_caption(caption) # set window caption
     loadingMessage(DISPLAYSURFACE, myfont, ['Loading Vowels'])
