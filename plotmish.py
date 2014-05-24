@@ -769,7 +769,7 @@ def main():
                             if pressCTRLA:
                                 reason = ''
                                 if (pressed[shft[0]] or pressed[shft[1]]): 
-                                    while not reason:
+                                    while not reason or reason == 'QUITNOW':
                                         reason = inputbox.ask(DISPLAYSURFACE,'Reason ')
                                 displayMemory += [[v for v in vowButtonList]]
                                 logMemory += [copy.deepcopy(allLogs)]
@@ -1039,7 +1039,7 @@ def main():
                             vowelChange = True
                             reason = ''
                             if pressed[shft[0]] or pressed[shft[1]]:
-                                while not reason:
+                                while not reason or reason == 'QUITNOW':
                                     reason = inputbox.ask(DISPLAYSURFACE,'Reason ')
                             clear(currentVowel, reason)
                             vowButtonList.remove(currentVowel)

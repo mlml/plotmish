@@ -182,7 +182,7 @@ while True: # main loop
 		if mode == 'main':
 			for i,b in enumerate(textbuttons):
 				if 'click' in b.handleEvent(event):
-					answer = inputbox.ask(DISPLAYSURFACE,'',size = b.rect, font = captionFont, currentText = b.caption).strip()
+					answer = inputbox.ask(DISPLAYSURFACE,'',size = b.rect, newFont = captionFont, currentText = b.caption).strip()
 					if answer == 'QUITNOW':
 						pygame.quit() 
 						sys.exit()

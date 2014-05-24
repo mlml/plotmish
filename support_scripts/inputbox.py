@@ -25,9 +25,9 @@ def get_key():
 
 def getCharacter():
   # Check to see if the player has inputed a command
-  keyinput = pygame.key.get_pressed()  
-
   keyPress = get_key()
+
+  keyinput = pygame.key.get_pressed()  
 
   if keyPress == 95: keyPress = 45
   
@@ -45,25 +45,25 @@ def getCharacter():
 
   return keyPress 
 
-def display_box(screen, message, size, font):
+def display_box(screen, message, size, newFont):
   "Print a message in a box in the middle of the screen"
-  fontobject = font if font else pygame.font.SysFont('helvetica',18)
+  fontobject = newFont if newFont else pygame.font.SysFont('helvetica',18)
   
   boxdimensions = size if size else ((screen.get_width() / 2) - 150, (screen.get_height() / 2) - 10, 300, 20)
   pygame.draw.rect(screen, (0,0,0), boxdimensions, 0)
   
-  textdimensions = (size[0]-2,size[1]-2,size[2]+4,size[3]+4) if size else ((screen.get_width() / 2) - 152, (screen.get_height() / 2) - 12, 304, 24)
+  textdimensions = (boxdimensions[0]-2,boxdimensions[1]-2,boxdimensions[2]+4,boxdimensions[3]+4)# if size else ((screen.get_width() / 2) - 152, (screen.get_height() / 2) - 12, 304, 24)
   pygame.draw.rect(screen, (255,255,255),textdimensions, 1)
   if len(message) != 0:
     screen.blit(fontobject.render(message, 1, (255,255,255)),
                 (boxdimensions[0],boxdimensions[1]))
   pygame.display.flip()
 
-def ask(screen, question, size = None, font = None, currentText = None):
+def ask(screen, question, size = None, newFont = None, currentText = None):
   "ask(screen, question) -> answer"
   pygame.font.init()
   current_string = [] if not currentText else list(currentText)
-  display_box(screen, question + ": " if question else "" + string.join(current_string,""), size, font)
+  display_box(screen, question + ": " if question else "" + string.join(current_string,""), size, newFont)
   while 1:
     inkey = getCharacter()
     if inkey == K_BACKSPACE:
@@ -74,7 +74,7 @@ def ask(screen, question, size = None, font = None, currentText = None):
       break
     elif inkey <= 127:
       current_string.append(chr(inkey))
-    display_box(screen, question + ": " if question else "" + string.join(current_string,""), size, font)
+    display_box(screen, question + (": " if question else "") + string.join(current_string,""), size, newFont)
   return string.join(current_string,"")
 
 def main():
