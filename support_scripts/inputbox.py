@@ -51,8 +51,6 @@ def display_box(screen, message, size, font):
   
   boxdimensions = size if size else ((screen.get_width() / 2) - 150, (screen.get_height() / 2) - 10, 300, 20)
   pygame.draw.rect(screen, (0,0,0), boxdimensions, 0)
-
-  size = list(size)
   
   textdimensions = (size[0]-2,size[1]-2,size[2]+4,size[3]+4) if size else ((screen.get_width() / 2) - 152, (screen.get_height() / 2) - 12, 304, 24)
   pygame.draw.rect(screen, (255,255,255),textdimensions, 1)
