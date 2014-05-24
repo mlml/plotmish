@@ -101,6 +101,7 @@ BLACK = (0, 0, 0)
 parser = argparse.ArgumentParser(description = 'Make blank textgrids for transcription of DR uncut clips')
 parser.add_argument('vowels', metavar = 'vowel info', help = '.plt file or formant.txt file or folder containing many')
 parser.add_argument('wav', metavar = 'wav file', help = '.wav file or folder containing many')
+parser.add_argument('annotator', metavar = 'annotator', help = 'what\'s your name?')
 parser.add_argument('-k', metavar = 'keyword', default = '*', help = 'keyword for selecting files in a directory, default is all files in the directory')
 parser.add_argument('-o', metavar = 'output file', default = 'log', help = 'change folder to write log files to, default is plotmish/logs')
 parser.add_argument('-a',  action = 'store_true', help = 'append to older log file instead of writing over it')
@@ -209,14 +210,14 @@ def writeLogs(allLogs, append = False):
         header = True if not os.path.isfile(os.path.join(args.o,os.path.basename(f).replace('.wav','-corrLog.csv'))) else False
         if args.a or append:
             log = csv.writer(open(os.path.join(args.o,os.path.basename(f).replace('.wav','-corrLog.csv')),'a'))
-            if header: log.writerow(['id','vowel','word','oldTime','time','duration (ms)','stress','maxForms','oldF1','F1','oldF2','F2'])
+            if header: log.writerow(['annotator','id','vowel','word','oldTime','time','duration (ms)','stress','maxForms','oldF1','F1','oldF2','F2'])
         else:
             log = csv.writer(open(os.path.join(args.o,os.path.basename(f).replace('.wav','-corrLog.csv')),'wb'))
-            log.writerow(['id','vowel','word','oldTime','time','duration (ms)','stress','maxForms','oldF1','F1','oldF2','F2'])
+            log.writerow(['annotator','id','vowel','word','oldTime','time','duration (ms)','stress','maxForms','oldF1','F1','oldF2','F2'])
 
         # write header to log file
         for k,w in writeThis.items():
-            log.writerow([w[0].split('-')[-1]]+w[1:])
+            log.writerow([args.annotator]+[w[0].split('-')[-1]]+w[1:])
 
 # vowel classes TO DO: double check these, I think there are some vowels in the wrong classes 
 # classes defined from http://fave.ling.upenn.edu/downloads/Plotnik%20cheat%20sheet.pdf

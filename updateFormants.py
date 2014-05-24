@@ -60,13 +60,13 @@ for l in logs:
 	logFile.close()
 	## correct formant files
 	for ll in logList[1:]:
-		number = int(ll[0])
-		time = ll[4]
-		maxForms = ll[7]
-		F1 = ll[9]
-		F2 = ll[11]
+		number = int(ll[1])
+		time = ll[5]
+		maxForms = ll[8]
+		F1 = ll[10]
+		F2 = ll[12]
 		try:
-			comment = ll[12]
+			comment = ll[13]
 		except:
 			comment = 'corrected'
 		## change the values where appropriate
