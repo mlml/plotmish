@@ -47,7 +47,7 @@ View
 
 editor LongSound 'name_of_sound_file_in_objects_list$'
 
-Log settings... "Log file only" 'Current_dir$' "'time''tab$''f1:0''tab$''f2:0''tab$''f0:0'" "Log file only" 'Current_dir$' "'time:6''tab$''f0:2'" 'Current_dir$' 'Current_dir$'  
+Log settings... "Log file only" 'Current_dir$' "'time''tab$''f1:0''tab$''f2:0''tab$''f0:0'" "Log file only" "NONE" "'time:6''tab$''f0:2'" "NONE" "NONE"  
 
 Formant settings... "5500" 'maxForms' "0.025" "30" 1
 
