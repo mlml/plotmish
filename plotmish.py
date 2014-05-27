@@ -69,6 +69,7 @@ class vowel:
         self.pitch = None
         self.button = None
         self.origButton = None
+        self.alreadyCorrected = None
         self.id = None
 
     def makeAlternate(self, f1, f2, newButton):
@@ -314,7 +315,7 @@ def makeVowels():
         buttonRect = pygame.Rect(x,y, 8, 8)
         buttonRect.center = (x,y)
         button = pygbutton.PygButton(buttonRect,'►'.decode('utf8'),border = False)
-        button.bgcolor = colours[v.vowelCode]
+        button.bgcolor = colours[v.vowelCode] 
         button.fgcolor = colours[v.vowelCode]
         v.button = button
         if v.vowelCode not in vowButtons:
@@ -377,6 +378,14 @@ def getVowelsTxt():
             pitchList = [p.replace('\n','').strip() for p in open(thisPitch,'rU').readlines()]
         vowelF = open(f[1],'r')
         vowels = vowelF.readlines()[3:]
+        #get associated log file if available
+        try:
+            logF = open(os.path.join(args.o , os.path.basename(f[0]).replace('.wav','')+'-corrLog.csv'),'rU')
+            logR = list(csv.reader(logF))[1:]
+            logF.close()
+        except: 
+            logR = None    
+
         for i,v in enumerate(vowels):
             v = v.split('\t')
             nV = vowel(float(v[3]),float(v[4]),f[0]) # initialize new vowel
@@ -384,8 +393,8 @@ def getVowelsTxt():
             # (F1@20%, F2@20%, F1@35%, F2@35%, F1@50%, F2@50%, F1@65%, F2@65%, F1@80%, F2@80%)
             nV.id = os.path.basename(f[0]).replace('.wav','')+'-'+str(i+1)
             extraForms = tuple(v[21:31])
-            for i in range(0,len(extraForms),2):
-                try: nV.durForms += [(round(float(extraForms[i]),1),round(float(extraForms[i+1]),1))]
+            for j in range(0,len(extraForms),2):
+                try: nV.durForms += [(round(float(extraForms[j]),1),round(float(extraForms[j+1]),1))]
                 except: continue 
             # get other formant measurements from the same point with various max Formant settings (3,4,5,6)
             moreForms = [re.sub('[\[\]]','',m).split(',') for m in v[36].split('],[')]
@@ -411,6 +420,25 @@ def getVowelsTxt():
             nV.timeRange = (v[10],v[11])
             nV.duration = str(int(float(v[12])*1000))
             nV.wFile = f[0]
+            if logR:
+                for line in logR:
+                    if line[1].strip() == str(i+1):
+                        try:
+                            if not line[13].strip():
+                                nV.alreadyCorrected = (line[5], line[8], line[10], line[12])
+                            else:
+                                nV.alreadyCorrected = 'removed'
+                        except: 
+                            nV.alreadyCorrected = (line[5], line[8], line[10], line[12])
+                        print nV.time, nV.maxForm, nV.F1, nV.F2
+                                        
+            '''
+            try: 
+                if nV[38].strip():
+                    nV.alreadyCorrected = True
+            except: pass
+            '''
+
             allvowels += [nV]
         #makeVowelClasses()
         # gets the max and min F1 and F2 
@@ -582,6 +610,7 @@ def makeButtons():
     if inputType == 'txt': sideButtons += ['RemeasureP']
     else: sideButtons += ['Praat']
     sideButtons += ['Cancel', 'Saved', 'Undo', 'Check Last', 'Rmv. Bad']
+    if inputType == 'txt': sideButtons += ['Resume']
     
     lowest = 0
     for i,c in enumerate(sideButtons):
@@ -998,6 +1027,27 @@ def main():
                                 call(['open', args.p])
                                 call(['support_scripts/sendpraat', '0', 'praat', 'execute \"'+os.path.join(os.getcwd(),'support_scripts/zoomIn.praat')+'\" \"' + lastVowel.wFile + '\" \"'+os.path.join(os.getcwd(),'praatLog')+ '\" ' + lastVowel.time + ' 0 ' + lastVowel.maxForm+'"'])
 
+                        if b.caption == 'Resume' and b.bgcolor != Color('darkolivegreen4'):
+                            displayMemory += [[v for v in vowButtonList]]
+                            logMemory += [copy.deepcopy(allLogs)]
+                            for v in vowButtonList:
+                                if isinstance(v.alreadyCorrected,tuple):
+                                    x,y = calculateVowelLocation((v.alreadyCorrected[2],v.alreadyCorrected[3])) 
+                                    buttonRect = pygame.Rect(x,y, 8, 8)
+                                    buttonRect.center = (x,y)
+                                    button = pygbutton.PygButton(buttonRect, '►'.decode('utf8'),border = False) # make new button for each alternate formant
+                                    button.bgcolor = WHITE # set colour of alternate formants to black
+                                    button.fgcolor = v.button.bgcolor
+                                    newV = v.makeAlternate(v.alreadyCorrected[2],v.alreadyCorrected[3],button)
+                                    newV.time, newV.maxForm = v.alreadyCorrected[:2]
+                                    newV.alreadyCorrected = None
+                                    vowButtonList.remove(v)
+                                    vowButtonList.append(newV)
+
+                            vowButtonList = [v for v in vowButtonList if v.alreadyCorrected != 'removed']
+                            b.bgcolor = Color('darkolivegreen4')
+                            vowelChange = True
+
 
                 ###GET RID OF VOWEL CLASSES FOR PLT OR IMPLEMENT INTERSECT/ UNION
                 for b in permButtons[2]: # displays vowels on the screen when the corresponding class button in clicked
@@ -1202,7 +1252,7 @@ def main():
                     stressFiltered += [b.caption]
 
             
-        vowList = [v for v in vowList if v.stress not in stressFiltered and (v.F1 > maxMin[0] and v.F1 < maxMin[2] and v.F2 > maxMin[1] and v.F2 < maxMin[3])]
+        vowList = [v for v in vowList if v.stress not in stressFiltered]# and (v.F1 >= maxMin[0] and v.F1 <= maxMin[2] and v.F2 >= maxMin[1] and v.F2 <= maxMin[3])]
         stressFiltered = []
         if vowelChange:
             DISPLAYSURFACE.fill(windowBgColor)
