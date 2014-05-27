@@ -798,8 +798,12 @@ def main():
                             if pressCTRLA:
                                 reason = ''
                                 if (pressed[shft[0]] or pressed[shft[1]]): 
-                                    while not reason or reason == 'QUITNOW':
-                                        reason = inputbox.ask(DISPLAYSURFACE,'Reason ')
+                                    reason = inputbox.ask(DISPLAYSURFACE,'Reason ')
+                                if not reason:
+                                    vowelChange = True
+                                    zoomLines = None
+                                    start, stop = (),()
+                                    break
                                 displayMemory += [[v for v in vowButtonList]]
                                 logMemory += [copy.deepcopy(allLogs)]
                                 vowButtonList, currentVowel = clearRange((T,R,B,L), vowButtonList, currentVowel, reason)
@@ -1084,13 +1088,15 @@ def main():
                             call(['open', args.p])
                             call(['support_scripts/sendpraat', '0', 'praat', 'execute \"'+os.path.join(os.getcwd(),'support_scripts/zoomIn.praat')+'\" \"' + currentVowel.wFile + '\" \"'+os.path.join(os.getcwd(),'praatLog')+ '\" ' + currentVowel.time + ' 0 ' + currentVowel.maxForm+'"'])
                         elif pressed[ctrl[0]] or pressed[ctrl[1]]:   
+                            reason = ''
+                            if pressed[shft[0]] or pressed[shft[1]]:
+                                reason = inputbox.ask(DISPLAYSURFACE,'Reason ')
+                            if not reason: 
+                                vowelChange = True
+                                break
                             displayMemory += [[v for v in vowButtonList]]
                             logMemory += [copy.deepcopy(allLogs)]
                             vowelChange = True
-                            reason = ''
-                            if pressed[shft[0]] or pressed[shft[1]]:
-                                while not reason or reason == 'QUITNOW':
-                                    reason = inputbox.ask(DISPLAYSURFACE,'Reason ')
                             clear(currentVowel, reason)
                             vowButtonList.remove(currentVowel)
                             #vowList.remove(currentVowel)

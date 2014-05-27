@@ -1,7 +1,7 @@
-formant	/Users/misha/Desktop/epFormants
+formant	/Users/misha/bigbro9uk/data/formants_full
 output	/Users/misha/plotmish/log
 log	/Users/misha/plotmish/log
-keyword	Darnell-4210
+keyword	Darnell-2840
 overwrite	False
 wav	/Users/misha/Desktop/epWavs
 corrected	/Users/misha/plotmish/corrected
