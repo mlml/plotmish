@@ -1174,7 +1174,7 @@ def main():
                         button = pygbutton.PygButton(buttonRect, '◉'.decode('utf8'), border = False)
                         button.bgcolor = WHITE
                         button.fgcolor = currentVowel.button.fgcolor 
-                        alt = currentVowel.makeAlternate(buttonRect[0], buttonRect[1],button)
+                        alt = currentVowel.makeAlternate(currentVowel.F1, currentVowel.F2 ,button)
                         xFormButtons = [alt]
                     if os.path.isfile(praatLog):
                         praatInfo = [(p.split()[0].strip(), p.split()[1].strip() ,p.split()[2].strip(), p.split()[3].strip()) for p in open(praatLog,'rU').readlines()]
