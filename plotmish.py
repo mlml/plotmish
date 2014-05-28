@@ -430,7 +430,6 @@ def getVowelsTxt():
                                 nV.alreadyCorrected = 'removed'
                         except: 
                             nV.alreadyCorrected = (line[5], line[8], line[10], line[12])
-                        print nV.time, nV.maxForm, nV.F1, nV.F2
                                         
             '''
             try: 
@@ -606,7 +605,7 @@ def makeButtons():
             button.bgcolor = Color('darkolivegreen2')
             classButtons.append(button)
         
-    sideButtons = ['Show All', 'Clear', 'Play', 'Std Dev', 'Dur.Filter', 'Zoom'] 
+    sideButtons = ['Show All', 'Clear', 'Play', 'Std Dev', 'Dur.Filter','Wrd.Filter', 'Zoom'] 
     if inputType == 'txt': sideButtons += ['RemeasureP']
     else: sideButtons += ['Praat']
     sideButtons += ['Cancel', 'Saved', 'Undo', 'Check Last', 'Rmv. Bad']
@@ -717,6 +716,7 @@ def main():
     DISPLAYSURFACE = pygame.display.set_mode((WINDOWWIDTH, WINDOWHEIGHT)) # create window according to dimensions 
     myfont = pygame.font.SysFont('helvetica',20)    # set font
     numFont = pygame.font.SysFont('helvetica',15)
+    miniFont = pygame.font.SysFont('helvetica',12)
     getFiles()
     mapToCelex.changeCelexPath('support_scripts/celex.cd')
     allLogs = {f[0]:{} for f in files}
@@ -752,6 +752,7 @@ def main():
     praatInfo = []
     filtered = []
     minDur = None
+    filtWrd = None
     stressFiltered = []
     vowelChange = True
     firstSave = False
@@ -831,6 +832,7 @@ def main():
                         textList = []
                         filtered = []
                         minDur = None
+                        filtWrd = None
                         vowelChange = True
 
                 for b in permButtons[1]: # display all or no vowels on screen if corresponding button in clicked
@@ -838,8 +840,8 @@ def main():
                         b.font.set_bold(False)
                         b.caption = 'Save'
                         vowelChange = True
-                    if b.caption == 'Rmv.Filtered' and not filtered:
-                        b.caption = 'Dur.Filter'
+                    if (b.caption == 'Rmv.Dur.Filt' or b.caption == 'Rmv.Wrd.Filt') and not filtered:
+                        b.caption = 'Dur.Filter' if b.caption == 'Rmv.Dur.Filt' else 'Wrd.Filter'
                         b.font = pygame.font.SysFont('courier', 16)
                         b._update()
                     if 'click' in b.handleEvent(event):
@@ -853,6 +855,7 @@ def main():
                             celDisplayed = [b.caption for b in permButtons[3]]+['NA']
                             filtered = []
                             minDur = None
+                            filtWrd = None
                             vowelChange = True
                         if b.caption == 'Clear':
                             for b in permButtons[0]+permButtons[2]+permButtons[3]:
@@ -864,6 +867,7 @@ def main():
                             textList = []
                             filtered = []
                             minDur = None
+                            filtWrd = None
                             vowelChange = True
                         if b.caption == 'Play': # start/stop play mode
                             if not play: 
@@ -926,7 +930,7 @@ def main():
                         if b.caption == 'Cancel' and praatMode:
                             call(['support_scripts/sendpraat', '0', 'praat', 'Quit'])
 
-                        if b.caption == 'Dur.Filter':
+                        if b.caption == 'Dur.Filter' and not filtered:
                             minDur = None
                             vowelChange = True
                             while not minDur:    
@@ -938,13 +942,15 @@ def main():
                                     if minDur != '':
                                         minDur = None
                                     else: break
-                            if minDur == '': break
                             for v in vowList:
                                 if int(v.duration) < minDur:
                                     filtered += [v]
-                            b.caption = 'Rmv.Filtered'
-                            b.font = pygame.font.SysFont('courier', 14) 
-                        elif b.caption == 'Rmv.Filtered' and filtered:
+                            if minDur == '' or not filtered:
+                                break
+                            if filtered:
+                                b.caption = 'Rmv.Dur.Filt'
+                                b.font = pygame.font.SysFont('courier', 14) 
+                        elif b.caption == 'Rmv.Dur.Filt' and filtered:
                             yesno = None
                             while not yesno:
                                 yesno = inputbox.ask(DISPLAYSURFACE,'Remove %r filtered vowels? y/n' % len(filtered)).strip().lower()
@@ -954,6 +960,8 @@ def main():
                                     else: yesno = None
                             vowelChange = True
                             if yesno == 'y':
+                                displayMemory += [[v for v in vowButtonList]]
+                                logMemory += [copy.deepcopy(allLogs)]
                                 for f in filtered:
                                     reason = 'filtered: below minimum duration of %d ms' % minDur
                                     outCode = codes[f.vowelCode] if inputType == 'plt' else arpCodes[f.vowelCode]
@@ -1052,6 +1060,42 @@ def main():
                             b.bgcolor = Color('darkolivegreen4')
                             vowelChange = True
 
+                        if b.caption == 'Wrd.Filter' and not filtered:
+                            filtWrd = inputbox.ask(DISPLAYSURFACE,'Remove word').strip().upper()
+                            for v in vowList:
+                                if v.word == filtWrd:
+                                    filtered += [v]
+                            if not filtWrd or not filtered: 
+                                vowelChange = True
+                                break
+                            if filtered:
+                                b.caption = 'Rmv.Wrd.Filt'
+                                b.font = pygame.font.SysFont('courier', 14) 
+                                vowelChange = True
+                        elif b.caption == 'Rmv.Wrd.Filt' and filtered:
+                            yesno = None
+                            while not yesno:
+                                yesno = inputbox.ask(DISPLAYSURFACE,'Remove %r filtered vowels? y/n' % len(filtered)).strip().lower()
+                                if yesno not in ['y','n']:
+                                    if yesno == 'yes': minDur = 'y'
+                                    elif yesno == 'no': minDur = 'n'
+                                    else: yesno = None
+                            vowelChange = True
+                            if yesno == 'y':
+                                displayMemory += [[v for v in vowButtonList]]
+                                logMemory += [copy.deepcopy(allLogs)]
+                                for f in filtered:
+                                    reason = 'filtered: word %r' % filtWrd
+                                    outCode = codes[f.vowelCode] if inputType == 'plt' else arpCodes[f.vowelCode]
+                                    newInfo = [str(wr) for wr in [f.id,outCode,f.word,'NA',f.time,f.duration,f.stress,f.maxForm,'NA','NA','NA','NA','removed: '+reason]]
+                                    allLogs[f.wFile][f.time] = newInfo
+                                    vowButtonList.remove(f)
+                            filtered = []
+                            filtWrd = None
+                            vowelChange = True
+                            b.caption = 'Wrd.Filter'
+                            b.font = pygame.font.SysFont('courier', 16)
+                            b._update()
 
                 ###GET RID OF VOWEL CLASSES FOR PLT OR IMPLEMENT INTERSECT/ UNION
                 for b in permButtons[2]: # displays vowels on the screen when the corresponding class button in clicked
@@ -1064,6 +1108,7 @@ def main():
                         textList = []
                         filtered = []
                         minDur = None
+                        filtWrd = None
                         vowelChange = True
 
                 for b in permButtons[3]:
@@ -1079,6 +1124,7 @@ def main():
                         textList = []
                         filtered = []
                         minDur = None
+                        filtWrd = None
                         vowelChange = True
                 
 
@@ -1273,9 +1319,15 @@ def main():
         DISPLAYSURFACE.blit(tokenNum,(710,820))
         pygame.draw.lines(DISPLAYSURFACE,BLACK,True,[(10,630),(185,630),(185,840),(10,840)],2)
         
-        if minDur:
-            minNum = myfont.render(str(minDur),1,BLACK)
-            DISPLAYSURFACE.blit(minNum,(710,800))
+        if (minDur or filtWrd) and filtered:
+            if minDur:
+                filteredCode = ( miniFont.render('Minimum Duration: ',1,BLACK), miniFont.render(str(minDur),1,BLACK) )
+                filtsize = miniFont.size(str(minDur))
+            else:
+                filteredCode = ( miniFont.render('Filtered Word: ',1,BLACK) , miniFont.render(str(filtWrd),1,BLACK) )
+                filtsize = miniFont.size(str(filtWrd))
+            for i,f in enumerate(filteredCode):    
+                DISPLAYSURFACE.blit(f,(WINDOWWIDTH-(filtsize[0]+10 if i else 110),800 + i*(filtsize[1]+3)))
         
         if inputType == 'txt':
             pygame.draw.lines(DISPLAYSURFACE,BLACK,True,[(225,630),(480,630),(480,840),(225,840)],2)
