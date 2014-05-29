@@ -800,11 +800,11 @@ def main():
                                 reason = ''
                                 if (pressed[shft[0]] or pressed[shft[1]]): 
                                     reason = inputbox.ask(DISPLAYSURFACE,'Reason ')
-                                if not reason:
-                                    vowelChange = True
-                                    zoomLines = None
-                                    start, stop = (),()
-                                    break
+                                    if not reason:
+                                        vowelChange = True
+                                        zoomLines = None
+                                        start, stop = (),()
+                                        break
                                 displayMemory += [[v for v in vowButtonList]]
                                 logMemory += [copy.deepcopy(allLogs)]
                                 vowButtonList, currentVowel = clearRange((T,R,B,L), vowButtonList, currentVowel, reason)
@@ -1137,9 +1137,10 @@ def main():
                             reason = ''
                             if pressed[shft[0]] or pressed[shft[1]]:
                                 reason = inputbox.ask(DISPLAYSURFACE,'Reason ')
-                            if not reason: 
-                                vowelChange = True
-                                break
+                                if not reason: 
+                                    vowelChange = True
+                                    break
+                            print 'here'
                             displayMemory += [[v for v in vowButtonList]]
                             logMemory += [copy.deepcopy(allLogs)]
                             vowelChange = True

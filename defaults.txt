@@ -1,10 +1,10 @@
-formant	/Users/misha/bigbro9uk/data/formants_full
+formant	/Users/misha/bigbro9uk/data/formants_ep/
 output	/Users/misha/plotmish/log
 log	/Users/misha/plotmish/log
 keyword	Darnell-2840
 overwrite	False
 wav	/Users/misha/Desktop/epWavs
-corrected	/Users/misha/plotmish/corrected
+corrected	/Users/misha/plotmish/corrected/
 praat	/Applications/Praat.app
 pitch tracks	
 annotator	MS2

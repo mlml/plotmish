@@ -48,19 +48,23 @@ def getCharacter():
 def display_box(screen, message, size, newFont):
   "Print a message in a box in the middle of the screen"
   fontobject = newFont if newFont else pygame.font.SysFont('helvetica',18)
-  
-  boxdimensions = size if size else ((screen.get_width() / 2) - 150, (screen.get_height() / 2) - 10, 300, 20)
+  boxdimensions = size if size else pygame.Rect((screen.get_width() / 2) - 150, (screen.get_height() / 2) - 10, 300, 20)
+
   pygame.draw.rect(screen, (0,0,0), boxdimensions, 0)
   
-  textdimensions = (boxdimensions[0]-2,boxdimensions[1]-2,boxdimensions[2]+4,boxdimensions[3]+4)# if size else ((screen.get_width() / 2) - 152, (screen.get_height() / 2) - 12, 304, 24)
+  textdimensions = pygame.Rect(boxdimensions.left-2,boxdimensions.top-2,boxdimensions.width+4,boxdimensions.height+4)# if size else ((screen.get_width() / 2) - 152, (screen.get_height() / 2) - 12, 304, 24)
   pygame.draw.rect(screen, (255,255,255),textdimensions, 1)
   if len(message) != 0:
-    screen.blit(fontobject.render(message, 1, (255,255,255)),
-                (boxdimensions[0],boxdimensions[1]))
+    boxLeft = boxdimensions.left + (boxdimensions.width-fontobject.size(message)[0]) if boxdimensions.width < fontobject.size(message)[0] else boxdimensions.left
+    screen.blit(fontobject.render(message, 1, (255,255,255)), (boxLeft,boxdimensions.top))
   pygame.display.flip()
 
-def ask(screen, question, size = None, newFont = None, currentText = None):
+def ask(screen, question, size = None, newFont = None, currentText = None, pathMode = False):
   "ask(screen, question) -> answer"
+  # if pathMode == TRUE the hitting tab returns a list
+  # the calling program can the complete the path and reopen 
+  #inputbox for further inputing (should be called with 
+  # currentText)
   pygame.font.init()
   current_string = [] if not currentText else list(currentText)
   display_box(screen, question + ": " if question else "" + string.join(current_string,""), size, newFont)
@@ -72,10 +76,12 @@ def ask(screen, question, size = None, newFont = None, currentText = None):
       return 'QUITNOW'
     elif inkey == K_RETURN:
       break
+    elif inkey == K_TAB and pathMode:
+      return [string.join(current_string,"")]
     elif inkey <= 127:
       current_string.append(chr(inkey))
     display_box(screen, question + (": " if question else "") + string.join(current_string,""), size, newFont)
-  return string.join(current_string,"")
+  return string.join(current_string,"") 
 
 def main():
   screen = pygame.display.set_mode((320,240))

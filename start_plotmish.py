@@ -123,6 +123,17 @@ def shortcut(pth):
 		pth = root+pth
 	return pth
 
+def completePath(path):
+	immedDir = shortcut(path.rsplit(os.sep,1)[0])
+	if os.path.isdir(immedDir):
+		suffix = path.rsplit(os.sep,1)[1]
+		opts = [os.path.basename(g) for g in glob.glob(os.path.join(immedDir,suffix+'*'))]
+		if len(opts) == 1:
+			completed = os.path.join(path.rsplit(os.sep,1)[0], opts[0])
+			completed += os.sep if os.path.isdir(os.path.join(immedDir,opts[0])) else ''
+			return [completed]
+	return [path]
+
 
 def errorMessage(message):
     for i,m in enumerate(message):
@@ -182,11 +193,21 @@ while True: # main loop
 		if mode == 'main':
 			for i,b in enumerate(textbuttons):
 				if 'click' in b.handleEvent(event):
-					answer = inputbox.ask(DISPLAYSURFACE,'',size = b.rect, newFont = captionFont, currentText = b.caption).strip()
+					answer = []
+					while isinstance(answer, list):
+						answer = inputbox.ask(DISPLAYSURFACE,'',size = b.rect, newFont = captionFont, currentText = b.caption if not answer else answer[0], pathMode = True if i not in [2,7] else False)
+						if isinstance(answer, list):
+							answer = completePath(answer[0].strip())
 					if answer == 'QUITNOW':
 						pygame.quit() 
 						sys.exit()
-					b.caption = shortcut(answer) if i not in [2,7] else answer
+
+					b.caption = shortcut(answer.strip()) if i not in [2,7] else answer
+					fontsize = 16
+					while b.rect.width < b._font.size(b.caption)[0] and fontsize > 7:
+						fontsize -= 1
+						b._font = pygame.font.SysFont('courier',fontsize)
+						b._update()
 					updateArgs() 
 
 		
