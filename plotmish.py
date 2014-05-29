@@ -1155,6 +1155,7 @@ def main():
                             displayMemory += [[v for v in vowButtonList]]
                             logMemory += [copy.deepcopy(allLogs)]    
                             if praatMode:
+                                call(['rm', praatLog])
                                 message = 'runScript: \"support_scripts/zoomIn.praat\", %r, %r' % (currentVowel.wFile,float(currentVowel.time))
                                 call(['open', args.p])
                                 call(['support_scripts/sendpraat', '0', 'praat', 'execute \"'+os.path.join(os.getcwd(),'support_scripts/zoomIn.praat')+'\" \"' + currentVowel.wFile + '\" \"'+os.path.join(os.getcwd(),'praatLog')+ '\" ' + currentVowel.time + ' 1 '+currentVowel.maxForm+'"'])  
