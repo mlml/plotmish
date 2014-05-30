@@ -685,11 +685,12 @@ def resize(tempMaxMin, vowButtonList, currentVowel):
         currentVowel.button.rect.center = (x,y)
     return (vowButtonList, currentVowel)
 
-def clearRange(tempMaxMin, vowButtonList, currentVowel, reason):
+def clearRange(tempMaxMin, vowButtonList, currentVowel, reason, within = None):
+    if not within: within = vowButtonList
     tempVBL, tempVL = [],[]
     for v in vowButtonList:
         x,y = v.button.rect.center
-        if not (y > tempMaxMin[0] and x < tempMaxMin[1] and y < tempMaxMin[2] and x > tempMaxMin[3]):
+        if not (y > tempMaxMin[0] and x < tempMaxMin[1] and y < tempMaxMin[2] and x > tempMaxMin[3]) or v not in within:
             tempVBL += [v]
         else:
             clear(v, reason)
@@ -807,7 +808,7 @@ def main():
                                         break
                                 displayMemory += [[v for v in vowButtonList]]
                                 logMemory += [copy.deepcopy(allLogs)]
-                                vowButtonList, currentVowel = clearRange((T,R,B,L), vowButtonList, currentVowel, reason)
+                                vowButtonList, currentVowel = clearRange((T,R,B,L), vowButtonList, currentVowel, reason, within = vowList)
                                 if not currentVowel: textList = []
                             else:
                                 vowButtonList, currentVowel = resize((T,R,B,L), vowButtonList, currentVowel)
@@ -1140,7 +1141,6 @@ def main():
                                 if not reason: 
                                     vowelChange = True
                                     break
-                            print 'here'
                             displayMemory += [[v for v in vowButtonList]]
                             logMemory += [copy.deepcopy(allLogs)]
                             vowelChange = True
