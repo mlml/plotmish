@@ -196,7 +196,7 @@ def writeLogs(plot):
             log = csv.writer(open(join(args.o,basename(f).replace('.wav','-corrLog.csv')),'wb'))
             log.writerow(['annotator','id','vowel','word','oldTime','time','duration (ms)','stress','maxForms','oldF1','F1','oldF2','F2'])
         # write info to log file 
-        for k,w in writeThis.items():
+        for w in writeThis:
             log.writerow([args.annotator]+[w[0].split('-')[-1]]+w[1:])
 
 # get pitch files if -f0 flag is used
@@ -565,7 +565,7 @@ def clear(vowel, reason, plot):
     because = 'unallowed variant' if not plot.remReason and not reason else plot.remReason+' '+reason
     because = 'removed: '+because if not plot.remReason else because
     newInfo = [str(wr) for wr in [vowel.id, vowel.name ,vowel.word,'NA',vowel.time,vowel.duration,vowel.stress,vowel.maxForm,'NA','NA','NA','NA',because]]
-    plot.allLogs[vowel.wFile][vowel.time] = newInfo
+    plot.allLogs[vowel.wFile] += [newInfo]
 
 
 def updateDisplayed(displayed, button, plot):
@@ -611,7 +611,7 @@ def main():
     files = getFiles()
     #get all vowels in files 
     # make dictionary to log changes to   
-    plot.allLogs = {f[0]:{} for f in files} 
+    plot.allLogs = {f[0]:[] for f in files} 
     # make rendered text objects to draw on screen
     F1,F2 = (myfont.render('F1',1,Color('grey87')),myfont.render('F2',1,Color('grey87')))
     arpLabel = myfont.render('ARPABET',1,BLACK)
@@ -706,7 +706,7 @@ def main():
                 for b in permButtons[1]: # deal with buttons on right side of the screen
                     if b.font.get_bold(): b.font.set_bold(False) # makes sure button isn't bolded (happens for some reason ?)
                     # button says 'Saved' if all changes have been saved and 'Save' otherwise
-                    if 'Saved' in b.caption and plot.allLogs != {f[0]:{} for f in files}:
+                    if 'Saved' in b.caption and plot.allLogs != {f[0]:[] for f in files}:
                         b.caption = 'Save'
                         vowelChange = True
                     # button says Rmv if there are filtered tokens (can't filter by both word and duration at the same time)
@@ -842,7 +842,7 @@ def main():
                         
                         if 'Save' in b.caption: # save all changes to -corrLog.csv files
                             writeLogs(plot)
-                            plot.allLogs = {f[0]:{} for f in files}
+                            plot.allLogs = {f[0]:[] for f in files}
                             b.caption = 'Saved'
                             vowelChange = True
                             displayMemory = [[v for v in plot.vowButtons]]
@@ -1059,7 +1059,7 @@ def main():
                                 plot.oldv = vb
                         # write the information of the changed vowel to the list (to write to the log file later)
                         newInfo = [str(wr) for wr in [plot.oldv.id, x.name,x.word,plot.oldv.time,x.time,x.duration,x.stress,x.maxForm,plot.oldv.F1,x.F1,plot.oldv.F2,x.F2]]
-                        plot.allLogs[plot.oldv.wFile][plot.oldv.time] = newInfo
+                        plot.allLogs[plot.oldv.wFile] += [newInfo]
                         chooseFormants = False
                         plot.xFormButtons = []
                         writeInfo(x,plot)
