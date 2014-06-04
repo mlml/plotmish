@@ -27,6 +27,17 @@ else:
 if not os.path.isdir(args.c):
 	subprocess.call(['mkdir', args.c])
 
+## read config file
+configF = open('config.txt','rU')
+configList = [c.split('#')[0].strip().split(':') if '#' in c else c.strip() for c in configF.readlines() if c.split('#')[0]]
+configF.close()
+
+
+## define dictionaries of headings that will be changed in the corrected formant.txt file
+headings = ['F1', 'F2', 'TIME', 'MAX FORMANTS']
+configDict = {c[0].strip(): c[1].strip() for c in configList if c[0].strip() in headings}
+revConfigDict = {v:k for k,v in configDict.items()}
+
 ## iterate over all log files
 for l in logs:
 	
@@ -54,6 +65,25 @@ for l in logs:
 	formList = [o.replace('\n','').split('\t') for o in oldFile.readlines()]
 	oldFile.close()
 
+	## find indexes to write the changes to
+	indexes = {i: None for i in headings}
+	badFile = True
+	for i,line in enumerate(formList):
+		headCount = 0
+		for head in configDict:
+			if configDict[head] in line: headCount += 1
+		if headCount == len(headings):
+			for j,li in enumerate(line):
+				try: indexes[revConfigDict[li]] = j  
+				except: pass
+			badFile = False
+			topping = formList[:i]
+			formList = formList[i:]
+			indexes.update({'NOTE':len(line)})
+			break
+	if badFile:
+		print >> sys.stderr, 'Mandatory Headings not found','for file: '+ basename(oldForms[0])+'\nCannot write to file, continuing...'
+		continue
 	## extract logFile info to a list
 	logFile = open(l,'rU')
 	logList = [o.replace('\n','').split(',') for o in logFile.readlines()]
@@ -70,28 +100,27 @@ for l in logs:
 		except:
 			comment = 'corrected'
 		## change the values where appropriate
-		formList[number+2][3] = F1 if F1 != 'NA' else formList[number+2][3]
-		formList[number+2][4] = F2 if F2 != 'NA' else formList[number+2][4]
-		formList[number+2][9] = time if time != 'NA' else formList[number+2][9]
-		formList[number+2][35] = maxForms if maxForms != 'NA' else formList[number+2][35]
+		formList[number][indexes['F1']] = F1 if F1 != 'NA' else formList[number][indexes['F1']]
+		formList[number][indexes['F2']] = F2 if F2 != 'NA' else formList[number][indexes['F2']]
+		formList[number][indexes['TIME']] = time if time != 'NA' else formList[number][indexes['TIME']]
+		formList[number][indexes['MAX FORMANTS']] = maxForms if maxForms != 'NA' else formList[number][indexes['MAX FORMANTS']]
 		
 		## add appropriate note
 		reason = comment.split()[0].replace(':','').strip()
 		try: 
-			note = comment.split()[1].strip()
+			note = ' '.join([c.strip() for c in comment.split()[1:]])
 		except: 
 			note = ''
 		try:
-			formList[number+2][38] = reason
-			formList[number+2][38] = note
+			formList[number][indexes['NOTE']] = reason
+			formList[number][indexes['NOTE']+1] = note
 		except:
-			formList[number+2] += [reason,note]
+			formList[number] += [reason,note]
 
 	## write to new formant.txt file
 	newFile = open(pj(args.c,name[0]+'-formant.txt'),'wb')
-	for i,fl in enumerate(formList):
-		if i<2: 
-			newFile.write(' '.join(fl)+'\n')
-		else:
-			newFile.write('\t'.join(fl)+'\n')
+	for t in topping:
+		newFile.write(' '.join(t)+'\n')
+	for fl in formList:
+		newFile.write('\t'.join(fl)+'\n')
 	newFile.close()

@@ -93,6 +93,7 @@ class vowel:
         self.origButton = None
         self.alreadyCorrected = None
         self.id = None
+        self.remeasureOpts = ['praat'] 
 
     def makeAlternate(self, f1, f2, newButton):
         # makes identical version of vowel with different f1 and 
@@ -116,6 +117,7 @@ class vowel:
         newV.F2 = f2
         newV.origButton = self.button
         newV.button = newButton
+        newV.remeasureOpts = self.remeasureOpts 
         return newV
 
 # vowel plot class
@@ -145,6 +147,7 @@ class vowelPlot:
         self.maxMin = () # tuple of (minF1, minF2, maxF1, maxF2) this changes according to zoom
         self.defaultMaxMin = () # default of self.maxMin (does not change when zooming)
         self.allLogs = {} # dictionary of all changes made since last save
+
 
 
 
@@ -201,6 +204,19 @@ def writeLogs(plot):
 
 # get pitch files if -f0 flag is used
 if args.f0: pitchFiles = glob(join(args.f0,'*.Pitch'))
+
+# lists of headings from the config file
+mandatoryHeadings  = ['ARPABET','STRESS', 'WORD', 'F1', 'TIME', 'WORD PRONUNCIATION', 'MAX FORMANTS', 'BEGINNING', 'END', 'INDEX']
+durHeadings = ['F1@20%', 'F2@20%' ,'F1@35%' , 'F2@35%' , 'F1@50%' , 'F2@50%' , 'F1@65%' , 'F2@65%' , 'F1@80%' , 'F2@80%']
+optionalHeadings = ['DURATION', 'PRECEDING PHONE', 'FOLLOWING PHONE', 'CELEX', 'ALT MEASUREMENTS']
+
+def readConfig():
+    # read from the config file to get the formant.txt file headings
+    configF = open('config.txt','rU')
+    configList = [c.split('#')[0].strip().split(':') if '#' in c else c.strip() for c in configF.readlines() if c.split('#')[0]]
+    configF.close()
+    configDict = {c[0].strip(): c[1].strip() for c in configList}
+    return configDict
 
 def getFiles():
     # get all relevant files and pair them together
@@ -309,6 +325,9 @@ def assignMaxMin(plot, allvowels):
 def getVowels(plot, files):
     # reads all the vowels from the formant.txt file
     allvowels = []
+    headings = readConfig()
+    revHeadings = {v:k for k,v in headings.items()}
+    
     for f in files:
         # display which file is being processed TODO: speed this up
         loadingMessage(plot.display, myfont, ['Loading Vowels', basename(f[0]).replace('.wav','')])
@@ -317,7 +336,28 @@ def getVowels(plot, files):
             thisPitch = [p for p in pitchFiles if basename(p).replace('.Pitch','') in basename(f[0])][0]
             pitchList = [p.replace('\n','').strip() for p in open(thisPitch,'rU').readlines()]
         vowelF = open(f[1],'r')
-        vowels = vowelF.readlines()[3:]
+        vowels = vowelF.readlines()
+        
+        # find header line and column indexes
+        indexes = {i: None for i in mandatoryHeadings+durHeadings+optionalHeadings}
+        badFile = True
+        for i,line in enumerate(vowels):
+            headCount = 0
+            for head in mandatoryHeadings:
+                if headings[head] in line: headCount += 1
+            if headCount == len(mandatoryHeadings):
+                for j,l in enumerate(line.split('\t')):
+                    try: indexes[revHeadings[l]] = j  
+                    except: pass
+                badFile = False
+                vowels = vowels[i+1:]
+                break
+        if badFile:
+            loadingMessage(plot.display, myfont, ['Mandatory Headings not found','for file: ', basename(f[0]).replace('.wav',''), 'check config.txt file'])
+            print >> sys.stderr, 'Mandatory Headings not found','for file: '+ basename(f[0]).replace('.wav','')
+            pygame.time.wait(2000)
+            continue
+
         #get associated log file if available
         try:
             logF = open(join(args.o , basename(f[0]).replace('.wav','')+'-corrLog.csv'),'rU')
@@ -328,38 +368,45 @@ def getVowels(plot, files):
 
         for i,v in enumerate(vowels):
             v = v.split('\t')
-            nV = vowel(float(v[3]),float(v[4]),f[0]) # initialize new vowel
+            nV = vowel(float(v[indexes['F1']]),float(v[indexes['F2']]),f[0]) # initialize new vowel
             # get other formant measurements from various points in the vowel duration  
             # (F1@20%, F2@20%, F1@35%, F2@35%, F1@50%, F2@50%, F1@65%, F2@65%, F1@80%, F2@80%)
             nV.id = basename(f[0]).replace('.wav','')+'-'+str(i+1)
-            extraForms = tuple(v[21:31])
-            for j in range(0,len(extraForms),2):
-                try: nV.durForms += [(round(float(extraForms[j]),1),round(float(extraForms[j+1]),1))]
-                except: continue 
+            extraForms = [v[indexes[h]] for h in durHeadings]
+            if len(extraForms) == len(durHeadings):  
+                for j in range(0,len(extraForms),2):
+                    try: nV.durForms += [(round(float(extraForms[j]),1),round(float(extraForms[j+1]),1))]
+                    except: continue
+            # allow this vowel to be remeasured using % duration if all formant measurements are accounted for 
+            if len(nV.durForms) == 5: nV.remeasureOpts += ['dur']
             # get other formant measurements from the same point with various max Formant settings (3,4,5,6)
-            moreForms = [re.sub('[\[\]]','',m).split(',') for m in v[36].split('],[')]
-            for m in moreForms:
-                try:
-                    temp = [tuple([round(float(n.strip()),1) for n in m[:2]])]
-                except: 
-                    assert False, 'ERROR:\tthe formant.txt files do not contain extra formant measurement info\n\t\t\tmake sure the config.txt file in FAVE-extract has the line:\n\t\t\tcandidates=T\n\t\t\tand then re-extract the formant values'
-                if len(temp[0]) != 2:
-                    continue
-                nV.numForms += temp
+            if indexes['ALT MEASUREMENTS'] != None:
+                moreForms = [re.sub('[\[\]]','',m).split(',') for m in v[indexes['ALT MEASUREMENTS']].split('],[')]
+                for m in moreForms:
+                    try:
+                        temp = [tuple([round(float(n.strip()),1) for n in m[:2]])]
+                    except: 
+                        assert False, 'ERROR:\tthe formant.txt files do not contain extra formant measurement info\n\t\t\tmake sure the config.txt file in FAVE-extract has the line:\n\t\t\tcandidates=T\n\t\t\tand then re-extract the formant values'
+                    if len(temp[0]) != 2:
+                        continue
+                    nV.numForms += temp
+            # allow this vowel to be remeasured using max Formants if all formant measurements are accounted for 
+            if len(nV.numForms) == 4: nV.remeasureOpts += ['num']
             # get other values 
-            cmuPron = [p.strip() for p in re.sub('[\[\]\']','',v[33]).split(',')]
-            nV.pPhone = v[31]
-            nV.fPhone = v[32]
-            nV.word = v[2]
-            vIndex = int(v[34])
-            nV.celex = getCelexVowel(nV.word,cmuPron,vIndex)
-            nV.time = v[9]
-            if args.f0: nV.pitch = getPitch(pitchList,timestamp, thisPitch) 
-            nV.maxForm = v[35]
-            nV.name = v[0]
-            nV.stress = v[1]
-            nV.timeRange = (v[10],v[11])
-            nV.duration = str(int(float(v[12])*1000))
+            cmuPron = [p.strip() for p in re.sub('[\[\]\']','',v[indexes['WORD PRONUNCIATION']]).split(',')]
+            nV.pPhone = v[indexes['PRECEDING PHONE']] if indexes['PRECEDING PHONE'] != None else '??'
+            nV.fPhone = v[indexes['FOLLOWING PHONE']] if indexes['FOLLOWING PHONE'] != None else '??'
+            nV.word = v[indexes['WORD']]
+            vIndex = int(v[indexes['INDEX']])
+            nV.celex = getCelexVowel(nV.word,cmuPron,vIndex) if indexes['CELEX'] == None else v[indexes['CELEX']]
+            if nV.celex.strip() == '': nV.celex = 'NA'
+            nV.time = v[indexes['TIME']]
+            if args.f0: nV.pitch = getPitch(pitchList, nV.time, thisPitch) 
+            nV.maxForm = v[indexes['MAX FORMANTS']]
+            nV.name = v[indexes['ARPABET']]
+            nV.stress = v[indexes['STRESS']]
+            nV.timeRange = (v[indexes['BEGINNING']],v[indexes['END']])
+            nV.duration = str(int(float(v[indexes['DURATION']])*1000)) if indexes['DURATION'] != None else '??'
             nV.wFile = f[0]
             if logR:
                 for line in logR:
@@ -973,31 +1020,32 @@ def main():
                             call(['open', args.p])
                             call(['support_scripts/sendpraat', '0', 'praat', 'execute \"'+join(os.getcwd(),'support_scripts/zoomIn.praat')+'\" \"' + plot.currentVowel.wFile + '\" \"'+join(os.getcwd(),'praatLog')+ '\" ' + plot.currentVowel.time + ' 1 '+plot.currentVowel.maxForm+'"'])  
                             chooseFormants = True
-                            break   
-                        forms = plot.currentVowel.numForms if formType == 'num' else plot.currentVowel.durForms # use either duration or maxform alternate 
-                        for i,xform in enumerate(forms): # figure out where to write the alternate formant buttons (black buttons)
-                            x,y = calculateVowelLocation(xform, plot)
-                            buttonRect = pygame.Rect(x,y, 8, 8)
+                               
+                        elif formType in plot.currentVowel.remeasureOpts: 
+                            forms = plot.currentVowel.numForms if formType == 'num' else plot.currentVowel.durForms # use either duration or maxform alternate 
+                            for i,xform in enumerate(forms): # figure out where to write the alternate formant buttons (black buttons)
+                                x,y = calculateVowelLocation(xform, plot)
+                                buttonRect = pygame.Rect(x,y, 8, 8)
+                                buttonRect.center = (x,y)
+                                button = pygbutton.PygButton(buttonRect, '►'.decode('utf8'),border = False) # make new button for each alternate formant
+                                button.bgcolor = BLACK # set colour of alternate formants to black
+                                button.fgcolor = BLACK
+                                alt = plot.currentVowel.makeAlternate(xform[0],xform[1],button)
+                                if formType == 'dur': # set new time or maxForms if changed 
+                                    alt.time = str(round(((float(alt.duration)/1000.0)*((i+1)*0.2))+float(alt.timeRange[0]),3))
+                                else:
+                                    alt.maxForm = str(3+i)
+                                plot.xFormButtons += [alt]
+                            # make alternate button for current F1 and F2 values (white button)
+                            x,y = calculateVowelLocation((plot.currentVowel.F1,plot.currentVowel.F2), plot)
+                            buttonRect = pygame.Rect(x,y, 10, 10)
                             buttonRect.center = (x,y)
-                            button = pygbutton.PygButton(buttonRect, '►'.decode('utf8'),border = False) # make new button for each alternate formant
-                            button.bgcolor = BLACK # set colour of alternate formants to black
-                            button.fgcolor = BLACK
-                            alt = plot.currentVowel.makeAlternate(xform[0],xform[1],button)
-                            if formType == 'dur': # set new time or maxForms if changed 
-                                alt.time = str(round(((float(alt.duration)/1000.0)*((i+1)*0.2))+float(alt.timeRange[0]),3))
-                            else:
-                                alt.maxForm = str(3+i)
+                            button = pygbutton.PygButton(buttonRect, '◉'.decode('utf8'), border = False) # make new button 
+                            button.bgcolor = WHITE 
+                            button.fgcolor = plot.currentVowel.button.fgcolor
+                            alt = plot.currentVowel.makeAlternate(plot.currentVowel.F1,plot.currentVowel.F2, button)
                             plot.xFormButtons += [alt]
-                        # make alternate button for current F1 and F2 values (white button)
-                        x,y = calculateVowelLocation((plot.currentVowel.F1,plot.currentVowel.F2), plot)
-                        buttonRect = pygame.Rect(x,y, 10, 10)
-                        buttonRect.center = (x,y)
-                        button = pygbutton.PygButton(buttonRect, '◉'.decode('utf8'), border = False) # make new button 
-                        button.bgcolor = WHITE 
-                        button.fgcolor = plot.currentVowel.button.fgcolor
-                        alt = plot.currentVowel.makeAlternate(plot.currentVowel.F1,plot.currentVowel.F2, button)
-                        plot.xFormButtons += [alt]
-                        chooseFormants = True
+                            chooseFormants = True
 
                 for v in vowList: # deal with all vowels currently displayed on screen
                     if 'enter' in v.button.handleEvent(event):
