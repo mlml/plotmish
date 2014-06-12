@@ -31,10 +31,12 @@ def buildCelex():
             celDict[upWord] = celDict[upWord] + [[p for p in word[6] if p not in  ['-',"'",'"']]]
         else:
             celDict[upWord] = [[p for p in word[6] if p not in  ['-',"'",'"']]]
+    assert celDict
     return celDict
 
 def changeCelexPath(path, rebuildDict = True):
     global celexPath
+    assert os.path.isfile(path)
     celexPath = path
     if rebuildDict:
         buildCelex()

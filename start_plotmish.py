@@ -5,7 +5,7 @@ sys.path.append('plotmish/support_scripts')
 
 import pygame, pygbutton, inputbox
 
-WINDOWWIDTH, WINDOWHEIGHT = 500, 700
+WINDOWWIDTH, WINDOWHEIGHT = 500, 750
 
 captionFont = pygame.font.SysFont('courier',16)
 
@@ -38,11 +38,13 @@ args =	{	'formant' : '',
 			'pitch tracks' : '',
 			'overwrite' : False,
 			'corrected': '', 
-			'annotator': ''}
+			'annotator': '',
+			'celex dict': '',
+			'mode': False}
 
 defaultsPath = os.path.join(os.getcwd(),'plotmish','defaults.txt')
 
-akeys = {0:'formant',1:'wav',2:'keyword', 3:'log',4:'praat',5:'pitch tracks',6:'corrected', 7: 'annotator'}
+akeys = {0:'formant',1:'wav',2:'keyword', 3:'log',4:'praat',5:'pitch tracks',6:'celex dict', 7:'corrected', 8: 'annotator'}
 
 
 def writeDefaults():
@@ -56,7 +58,7 @@ def readDefaults():
 	for d in defaultF.readlines():
 		if d.strip():
 			d = d.replace('\n','').split('\t')
-			args[d[0].strip()] = d[1].strip() if d[0] != 'overwrite' else eval(d[1].strip()) 
+			args[d[0].strip()] = d[1].strip() if d[0] not in ['overwrite', 'mode'] else eval(d[1].strip()) 
 	defaultF.close()
 
 def updateArgs():
@@ -99,6 +101,11 @@ def checkDefaults():
 		if k == 'annotator':
 			if not v:
 				bad.append('no entry for '+k)
+		if k == 'celex dict':
+			if not os.path.isfile(v) and v:
+				bad.append(k+' file not found')
+			elif not v and args['mode']:
+				bad.append(k +' required for Celex Mode')
 	return bad
 	
 root = os.path.abspath(os.sep)
@@ -142,6 +149,13 @@ def errorMessage(message):
     #pygame.display.update()
     #DISPLAYSURFACE.fill(WHITE)
 
+def resizeText(button):
+	fontsize = 16
+	while button.rect.width < button._font.size(button.caption)[0] and fontsize > 7:
+		fontsize -= 1
+		button._font = pygame.font.SysFont('courier',fontsize)
+		button._update()
+
 if not os.path.isfile(defaultsPath):
 	writeDefaults()
 else:
@@ -157,16 +171,22 @@ textbuttons = [	button(rect = pygame.Rect(20, 100, 460, 20),caption = args['form
  				button(rect = pygame.Rect(20, 250, 460, 20),caption = args['log'], border = False, bgcolor = GREY, fgcolor = WHITE),
  				button(rect = pygame.Rect(20, 300, 460, 20),caption = args['praat'], border = False, bgcolor = GREY, fgcolor = WHITE),
  				button(rect = pygame.Rect(20, 350, 460, 20),caption = args['pitch tracks'], border = False, bgcolor = GREY, fgcolor = WHITE),
- 				button(rect = pygame.Rect(20, 400, 460, 20),caption = args['corrected'], border = False, bgcolor = GREY, fgcolor = WHITE), 
- 				button(rect = pygame.Rect(20, 450, 460, 20),caption = args['annotator'], border = False, bgcolor = GREY, fgcolor = WHITE)]
+ 				button(rect = pygame.Rect(20, 400, 460, 20),caption = args['celex dict'], border = False, bgcolor = GREY, fgcolor = WHITE),
+ 				button(rect = pygame.Rect(20, 450, 460, 20),caption = args['corrected'], border = False, bgcolor = GREY, fgcolor = WHITE), 
+ 				button(rect = pygame.Rect(20, 500, 460, 20),caption = args['annotator'], border = False, bgcolor = GREY, fgcolor = WHITE)]
 
-onoffbuttons = [ button(rect = pygame.Rect(20, 500, 200, 20), caption = 'Overwrite Log Files' if args['overwrite'] else 'Append to Log files', bgcolor = pygame.Color('gray46')),
-				 button(rect = pygame.Rect(270, 500, 200, 20), caption = 'Make Pitch Tracks'),
-				 button(rect = pygame.Rect(20, 550, 200, 20), caption = 'Set As Default'),
-				 button(rect = pygame.Rect(270, 550, 200, 20), caption = 'Update Formants'),
-				 button(rect = pygame.Rect(0, 600, 200, 20), caption = 'Start Plotmish')]
+for t in textbuttons:
+	resizeText(t)
 
-onoffbuttons[-1].rect.centerx = WINDOWWIDTH/2.0
+onoffbuttons = [ button(rect = pygame.Rect(20, 550, 200, 20), caption = 'Overwrite Log Files' if args['overwrite'] else 'Append to Log files', bgcolor = pygame.Color('gray46')),
+				 button(rect = pygame.Rect(270, 550, 200, 20), caption = 'Celex Mode' if args['mode'] else 'ARPABET Mode', bgcolor = pygame.Color('gray46')),
+				 button(rect = pygame.Rect(20, 600, 200, 20), caption = 'Make Pitch Tracks'),
+				 button(rect = pygame.Rect(270, 600, 200, 20), caption = 'Set As Default'),
+				 button(rect = pygame.Rect(0, 650, 200, 20), caption = 'Update Formants'),
+				 button(rect = pygame.Rect(0, 700, 200, 40), caption = 'Start Plotmish')]
+
+for o in onoffbuttons[-2:]:
+	o.rect.centerx = WINDOWWIDTH/2.0
 
 errorButton = button(rect = pygame.Rect(270, 550, 200, 20), caption = 'BACK')
 errorButton.rect.centerx = WINDOWWIDTH/2.0
@@ -179,8 +199,9 @@ text = 	[ 	(captionFont.render('formant.txt files:',1,BLACK),(20,82)),
 			(captionFont.render('log folder:',1,BLACK),(20,232)),
 			(captionFont.render('praat:',1,BLACK),(20,282)),
 			(captionFont.render('pitch tracks:',1,BLACK),(20,332)),
-			(captionFont.render('corrected folder:',1,BLACK),(20,382)),
-			(captionFont.render('annotator:',1,BLACK),(20,432))]
+			(captionFont.render('celex pronunciation dictionary:',1,BLACK),(20,382)),
+			(captionFont.render('corrected folder:',1,BLACK),(20,432)),
+			(captionFont.render('annotator:',1,BLACK),(20,482))]
 
 mode = 'main'
 
@@ -195,19 +216,15 @@ while True: # main loop
 				if 'click' in b.handleEvent(event):
 					answer = []
 					while isinstance(answer, list):
-						answer = inputbox.ask(DISPLAYSURFACE,'',size = b.rect, newFont = captionFont, currentText = b.caption if not answer else answer[0], pathMode = True if i not in [2,7] else False)
+						answer = inputbox.ask(DISPLAYSURFACE,'',size = b.rect, newFont = captionFont, currentText = b.caption if not answer else answer[0], pathMode = True if i not in [2,8] else False)
 						if isinstance(answer, list):
 							answer = completePath(answer[0].strip())
 					if answer == 'QUITNOW':
 						pygame.quit() 
 						sys.exit()
 
-					b.caption = shortcut(answer.strip()) if i not in [2,7] else answer
-					fontsize = 16
-					while b.rect.width < b._font.size(b.caption)[0] and fontsize > 7:
-						fontsize -= 1
-						b._font = pygame.font.SysFont('courier',fontsize)
-						b._update()
+					b.caption = shortcut(answer.strip()) if i not in [2,8] else answer
+					resizeText(b)
 					updateArgs() 
 
 		
@@ -219,7 +236,12 @@ while True: # main loop
 					elif b.caption == 'Append to Log files':
 						b.caption = 'Overwrite Log Files'
 						args['overwrite'] = True
-
+					if b.caption == 'ARPABET Mode':
+						b.caption = 'Celex Mode'
+						args['mode'] = True
+					elif b.caption == 'Celex Mode':
+						b.caption = 'ARPABET Mode'
+						args['mode'] = False
 					if b.caption == 'Set As Default':
 						errors = checkDefaults()
 						if not errors:
@@ -242,12 +264,14 @@ while True: # main loop
 					if b.caption == 'Start Plotmish':
 						errors = [e for e in checkDefaults() if 'corrected' not in e]
 						if not errors:
-							message = ['python', plotmish, args['formant'], args['wav'],args['annotator'], '-k', args['keyword'], '-o', args['log'], '-p', args['praat'], '-f0', args['pitch tracks']] 
+							message = ['python', plotmish, args['formant'], args['wav'],args['annotator'], '-k', args['keyword'], '-o', args['log'], '-p', args['praat'], '-f0', args['pitch tracks'], '-epw', args['celex dict']] 
 							if not args['overwrite']:
 								message += ['-a']
+							if args['mode']:
+								message += ['-c']
 							subprocess.call(['cd', 'plotmish'])
 							subprocess.call(message)
-
+							pygame.event.clear()
 						else:
 							mode = 'error'
 

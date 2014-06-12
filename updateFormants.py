@@ -38,6 +38,8 @@ headings = ['F1', 'F2', 'TIME', 'MAX FORMANTS']
 configDict = {c[0].strip(): c[1].strip() for c in configList if c[0].strip() in headings}
 revConfigDict = {v:k for k,v in configDict.items()}
 
+newHeadings = ['plotmish - changed', 'plotmish - removed' , 'plotmish - note', 'plotmish - annotator']
+
 ## iterate over all log files
 for l in logs:
 	
@@ -79,7 +81,18 @@ for l in logs:
 			badFile = False
 			topping = formList[:i]
 			formList = formList[i:]
-			indexes.update({'NOTE':len(line)})
+			
+			updateFormlist = []
+			for n in newHeadings:
+				if n in line:
+					indexes.update({n.split('-')[1].strip().upper() : line.index(n)})
+				else:
+					indexes.update({n.split('-')[1].strip().upper() : len(formList[0])})
+					formList[0] += [n]
+					updateFormlist += [n]
+			if updateFormlist:
+				formList = [f+['']*len(updateFormlist) for f in formList] 
+
 			break
 	if badFile:
 		print >> sys.stderr, 'Mandatory Headings not found','for file: '+ basename(oldForms[0])+'\nCannot write to file, continuing...'
@@ -95,27 +108,21 @@ for l in logs:
 		maxForms = ll[8]
 		F1 = ll[10]
 		F2 = ll[12]
+		annotator = ll[0]
 		try:
 			comment = ll[13]
 		except:
 			comment = 'corrected'
+
 		## change the values where appropriate
 		formList[number][indexes['F1']] = F1 if F1 != 'NA' else formList[number][indexes['F1']]
 		formList[number][indexes['F2']] = F2 if F2 != 'NA' else formList[number][indexes['F2']]
 		formList[number][indexes['TIME']] = time if time != 'NA' else formList[number][indexes['TIME']]
 		formList[number][indexes['MAX FORMANTS']] = maxForms if maxForms != 'NA' else formList[number][indexes['MAX FORMANTS']]
-		
-		## add appropriate note
-		reason = comment.split()[0].replace(':','').strip()
-		try: 
-			note = ' '.join([c.strip() for c in comment.split()[1:]])
-		except: 
-			note = ''
-		try:
-			formList[number][indexes['NOTE']] = reason
-			formList[number][indexes['NOTE']+1] = note
-		except:
-			formList[number] += [reason,note]
+		formList[number][indexes['CHANGED']] = 'Yes' if comment == 'corrected' else formList[number][indexes['CHANGED']]
+		formList[number][indexes['REMOVED']] = 'Yes' if comment != 'corrected' else formList[number][indexes['REMOVED']]
+		formList[number][indexes['ANNOTATOR']] = annotator
+		formList[number][indexes['NOTE']] = ' '.join([c.strip() for c in comment.split()[1:]])
 
 	## write to new formant.txt file
 	newFile = open(pj(args.c,name[0]+'-formant.txt'),'wb')

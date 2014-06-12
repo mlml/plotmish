@@ -34,12 +34,11 @@ from subprocess import call, Popen
 if isdir('plotmish'):
     os.chdir('plotmish')
 sys.path.append('support_scripts')
-import pygbutton, inputbox, mapToCelex
+import pygbutton, inputbox, mapToCelex, plotmishClasses
 from pygame.locals import *
 try: import numpy as np
-except: print >> sys.stderr, 'ca'
-#set path to epw.cd celex dict (currently in support scripts and called celex.cd)
-mapToCelex.changeCelexPath('support_scripts/celex.cd')
+except: print >> sys.stderr, 'can\'t find numpy, will not be able to draw ellipses' 
+
 
 # parse in arguments from the command line
 parser = argparse.ArgumentParser(description = 'Make blank textgrids for transcription of DR uncut clips')
@@ -51,12 +50,22 @@ parser.add_argument('-o', metavar = 'output file', default = 'log', help = 'chan
 parser.add_argument('-a',  action = 'store_true', help = 'append to older log file instead of writing over it')
 parser.add_argument('-p', metavar = 'Praat', default = '/Applications/Praat.app', help = 'change path to Praat application, default is /Applications/Praat.app')
 parser.add_argument('-f0', metavar = 'pitch tracks', default = '', help = 'folder containing pre-generated pitch tracks for each sound file')
+parser.add_argument('-epw', metavar = 'celex dict', default = '', help = 'path to epw.cd celex dictionary file, required for celex mode')
+parser.add_argument('-c', action = 'store_true', help = 'run in celex mode, default is ARPABET mode (requires epw.cd)')
 args = parser.parse_args()
 
+# check celex mode has access to celex dict 
+if args.c:
+    #set path to epw.cd celex dict 
+    try: 
+        mapToCelex.changeCelexPath(args.epw)
+    except:
+        print >> sys.stderr , 'Cannot read %r \nPlease change file path' % args.epw
+
 #set window sizes and frames per second
-FPS = 10
 WINDOWWIDTH = 820
 WINDOWHEIGHT = 850
+
 
 
 #set fonts
@@ -69,88 +78,6 @@ smallButtonFont = pygame.font.SysFont('courier', 16)
 #pressed button lists
 ctrl = [K_RCTRL, K_LCTRL] 
 shft = [K_RSHIFT, K_LSHIFT]
-
-# vowel token class
-class vowel:
-    def __init__(self, f1, f2, wfile):
-        self.name = ''
-        self.F1 = f1
-        self.F2 = f2
-        self.wFile = wfile
-        self.stress = None
-        self.duration = None
-        self.word = ''
-        self.time = None
-        self.celex = ''
-        self.pPhone = ''
-        self.fPhone = ''
-        self.maxForm = ''
-        self.timeRange = ()
-        self.durForms = []
-        self.numForms = []
-        self.pitch = None
-        self.button = None
-        self.origButton = None
-        self.alreadyCorrected = None
-        self.id = None
-        self.remeasureOpts = ['praat'] 
-
-    def makeAlternate(self, f1, f2, newButton):
-        # makes identical version of vowel with different f1 and 
-        # f2 and button
-        newV = vowel(f1,f2, self.wFile)
-        newV.name = self.name
-        newV.stress = self.stress
-        newV.duration = self.duration
-        newV.word = self.word
-        newV.time = self.time
-        newV.celex = self.celex
-        newV.pPhone = self.pPhone
-        newV.fPhone = self.fPhone
-        newV.maxForm = self.maxForm
-        newV.durForms = self.durForms
-        newV.numForms = self.numForms
-        newV.timeRange = self.timeRange
-        newV.pitch = self.pitch
-        newV.id = self.id
-        newV.F1 = f1
-        newV.F2 = f2
-        newV.origButton = self.button
-        newV.button = newButton
-        newV.remeasureOpts = self.remeasureOpts 
-        return newV
-
-# vowel plot class
-class vowelPlot:
-    def __init__(self, display):
-        self.display = display
-        self.textList = [] # list to write the info for the vowel that was scrolled over last
-        self.xFormButtons = [] # list to write the alternate measurements to (when re-evaluating a vowel)
-        self.currentVowel = None # current vowel button (last scrolled over)
-        self.oldv = None # when remeasuring a vowel this stores the old values 
-        self.ellip = [] # list to write ellipse variables (from output of confidenceEllipse())
-        self.filtered = [] # list of vowels filtered by duration or orthography
-        self.minDur = None # minimum duration of vowels to be displayed (None means minimum duration is 0)
-        self.filtWrd = None # word to filter from the plot (None means display all vowels)
-        self.stressFiltered = [] # stress markers not to display on plot (contains 1,2,0 only)
-        self.firstSave = False # makes sure that saving changes more than once doesn't constantly rewrite the log files 
-        self.arpDisplayed = [] # list of arpabet vowels to display on plot
-        self.celDisplayed = [] # list of celex vowels to display on plot
-        self.remReason = '' # vowel removal mode: either 'BAD' or 'OK'
-        self.vowButtons = [] # list of all buttons that have not been removed
-        self.height = 600 # height of the plot
-        self.width = 700 # width of the plot
-        self.maxF1 = None 
-        self.minF1 = None
-        self.maxF2 = None
-        self.minF2 = None
-        self.maxMin = () # tuple of (minF1, minF2, maxF1, maxF2) this changes according to zoom
-        self.defaultMaxMin = () # default of self.maxMin (does not change when zooming)
-        self.allLogs = {} # dictionary of all changes made since last save
-
-
-
-
 
 #set default black and white colours
 WHITE = (255, 255, 255, 0)
@@ -218,10 +145,10 @@ def readConfig():
     configDict = {c[0].strip(): c[1].strip() for c in configList}
     return configDict
 
-def getFiles():
+def getFiles(sett):
     # get all relevant files and pair them together
     # as (wav file, formant.txt file)
-    files = []
+    sett.files = []
     # if looking in directories
     if isdir(args.wav) and isdir(args.vowels):
         wFiles = glob(join(args.wav,'*'+args.k+'*.wav'))
@@ -230,25 +157,24 @@ def getFiles():
         for w in wFiles:
             for v in vFiles:
                 if basename(w.replace('.wav','')) in basename(v):
-                    files += [(w,v)]
+                    sett.files += [(w,v)]
     # if only one formant file given
     elif isdir(args.wav):
         wFiles = glob(join(args.wav,'*'+args.k+'*.wav'))
         for w in wFiles:
             if basename(w.replace('.wav','')) in basename(args.vowels):
-                files += [(w,args.vowels)]
+                sett.files += [(w,args.vowels)]
     # if only one wav file given
     elif isdir(args.vowels):
         vFiles = glob(join(args.vowels,'*'+args.k+'*'))
         for v in vFiles:
             if basename(args.wav.replace('.wav','')) in basename(v):
-                files += [(args.wav,v)]
+                sett.files += [(args.wav,v)]
     # if only one formant file and only one wav file is given
     else:
-        files += [(args.wav,args.vowels)]
-    files = [f for f in files if 'txt' == f[1][-3:]]
-    assert files, 'ERROR: no files found'
-    return files
+        sett.files += [(args.wav,args.vowels)]
+    sett.files = [f for f in sett.files if 'txt' == f[1][-3:]]
+    assert sett.files, 'ERROR: no files found'
 
 def calculateVowelLocation(f, plot):
     # calculates the location to display the vowel based on tuple of (F1,F2)    
@@ -322,13 +248,49 @@ def assignMaxMin(plot, allvowels):
     plot.maxMin = (plot.minF1, plot.minF2, plot.maxF1, plot.maxF2)
     plot.defaultMaxMin = (plot.minF1, plot.minF2, plot.maxF1, plot.maxF2)
 
-def getVowels(plot, files):
+def primaryCmuPronDict():
+    # make a dictionary with the primary pronunciation for all
+    # words in cmu.txt. Primary pronunciation is the pron with the
+    # most segments and the least schwa (AH0) vowels
+    cmuF = open(os.path.join('support_scripts','cmu.txt'))
+    lines = cmuF.readlines()
+    cmuF.close()
+    cmuDict = {}
+    for l in lines:
+        word = l.split(' ',1)[0].strip()
+        pron = l.split(' ',1)[1].strip().split()
+        if word not in cmuDict:
+            cmuDict[word] = pron
+        elif len(pron) > len(cmuDict[word]):
+            cmuDict[word] = pron
+        elif len(pron) == len(cmuDict[word]) and len([p for p in pron if 'AH0' == p]) < len([p for p in cmuDict[word] if 'AH0' == p]):
+            cmuDict[word] = pron
+    return cmuDict
+
+def getCmuPron(word, ind, pron, cmuDict):
+    # returns unreduced vowel (when possible)
+    try:
+        unreducedPron = ['']+cmuDict[word]+['']
+    except:
+        return 'NA'
+    pron = ['']+pron+['']
+    ind += 1 
+    before, after = pron[ind-1], pron[ind+1]
+    for i in range(len(unreducedPron)):
+        if i == 0 or i == len(unreducedPron)-1:
+            continue
+        if unreducedPron[i-1] == pron[ind-1] and unreducedPron[i+1] == pron[ind+1] and len(unreducedPron[i]) == 3:
+            return unreducedPron[i][:2]
+    return 'NA' 
+
+def getVowels(plot, sett):
     # reads all the vowels from the formant.txt file
     allvowels = []
     headings = readConfig()
     revHeadings = {v:k for k,v in headings.items()}
-    
-    for f in files:
+    if not args.c:
+        altDict = primaryCmuPronDict()
+    for f in sett.files:
         # display which file is being processed TODO: speed this up
         loadingMessage(plot.display, myfont, ['Loading Vowels', basename(f[0]).replace('.wav','')])
         # get pitch track if f0 is specified as an argument (from the command line)
@@ -368,7 +330,7 @@ def getVowels(plot, files):
 
         for i,v in enumerate(vowels):
             v = v.split('\t')
-            nV = vowel(float(v[indexes['F1']]),float(v[indexes['F2']]),f[0]) # initialize new vowel
+            nV = plotmishClasses.vowel(float(v[indexes['F1']]),float(v[indexes['F2']]),f[0]) # initialize new vowel
             # get other formant measurements from various points in the vowel duration  
             # (F1@20%, F2@20%, F1@35%, F2@35%, F1@50%, F2@50%, F1@65%, F2@65%, F1@80%, F2@80%)
             nV.id = basename(f[0]).replace('.wav','')+'-'+str(i+1)
@@ -397,13 +359,16 @@ def getVowels(plot, files):
             nV.pPhone = v[indexes['PRECEDING PHONE']] if indexes['PRECEDING PHONE'] != None else '??'
             nV.fPhone = v[indexes['FOLLOWING PHONE']] if indexes['FOLLOWING PHONE'] != None else '??'
             nV.word = v[indexes['WORD']]
+            nV.name = v[indexes['ARPABET']]
             vIndex = int(v[indexes['INDEX']])
-            nV.celex = getCelexVowel(nV.word,cmuPron,vIndex) if indexes['CELEX'] == None else v[indexes['CELEX']]
-            if nV.celex.strip() == '': nV.celex = 'NA'
+            if args.c:
+                nV.altVow = getCelexVowel(nV.word,cmuPron,vIndex) if indexes['CELEX'] == None else v[indexes['CELEX']]
+                if nV.altVow.strip() == '': nV.altVow = 'NA'
+            else:
+                nV.altVow = getCmuPron(nV.word, vIndex, cmuPron, altDict)
             nV.time = v[indexes['TIME']]
             if args.f0: nV.pitch = getPitch(pitchList, nV.time, thisPitch) 
             nV.maxForm = v[indexes['MAX FORMANTS']]
-            nV.name = v[indexes['ARPABET']]
             nV.stress = v[indexes['STRESS']]
             nV.timeRange = (v[indexes['BEGINNING']],v[indexes['END']])
             nV.duration = str(int(float(v[indexes['DURATION']])*1000)) if indexes['DURATION'] != None else '??'
@@ -456,10 +421,11 @@ def makeButtons():
     # make permanent buttons (on the bottom of the screen)
     vowButtons = []
     onOffButtons = []
-    celexButtons = []
+    altVowButtons = []
     #arpabet vowels
     # front
-    for i,c in enumerate(['IY', 'IH', 'EY', 'EH', 'AE']):
+    frontArp = ['IY', 'IH', 'EY', 'EH', 'AE']
+    for i,c in enumerate(frontArp):
         button = pygbutton.PygButton((20, 640+(i*35), 30, 30), c)
         button.bgcolor = colours[c]
         vowButtons.append(button)
@@ -468,40 +434,48 @@ def makeButtons():
     button.bgcolor = colours['AH']
     vowButtons.append(button)
     # back
-    for i,c in enumerate(['UW', 'UH', 'OW', 'AO', 'AA']):
+    backArp = ['UW', 'UH', 'OW', 'AO', 'AA']
+    for i,c in enumerate(backArp):
         button = pygbutton.PygButton((100, 640+(i*35), 30, 30), c)
         button.bgcolor = colours[c]
         vowButtons.append(button)
     # diphthongs and rhoticized
-    for i,c in enumerate(['AY','OY', 'OW', 'IW', 'ER']):
+    diphArp = ['AY','OY', 'AW', 'IW', 'ER']
+    for i,c in enumerate(diphArp):
         button = pygbutton.PygButton((140, 640+(i*35), 30, 30), c)
         button.bgcolor = colours[c]
         vowButtons.append(button)
     # celex vowels
     # front
-    for i,c in enumerate(['i','I','1','E','{']):
+    for i,c in enumerate(['i','I','1','E','{'] if args.c else frontArp):
         button = pygbutton.PygButton((255, 640+(i*40), 30, 30), c)
-        button.bgcolor = Color("lightskyblue")
-        celexButtons.append(button)
+        button.bgcolor = Color("lightskyblue") if args.c else colours[c]
+        altVowButtons.append(button)
     # central
-    for i,c in enumerate(['@','3','V','Q']):
-        button = pygbutton.PygButton((295, 640+(i*40), 30, 30), c)
-        button.bgcolor = Color("lightskyblue")
-        celexButtons.append(button)
+    if args.c:
+        for i,c in enumerate(['@','3','V','Q']):
+            button = pygbutton.PygButton((295, 640+(i*40), 30, 30), c)
+            button.bgcolor = Color("lightskyblue")
+            altVowButtons.append(button)
+    else:
+        button = pygbutton.PygButton((295, 710, 30, 30), 'AH')
+        button.bgcolor = colours['AH']
+        altVowButtons.append(button)
     # back
-    for i,c in enumerate(['u','U','5','$','#']):
+    for i,c in enumerate(['u','U','5','$','#'] if args.c else backArp):
         button = pygbutton.PygButton((335, 640+(i*40), 30, 30), c)
-        button.bgcolor = Color("lightskyblue")
-        celexButtons.append(button)
+        button.bgcolor = Color("lightskyblue") if args.c else colours[c]
+        altVowButtons.append(button)
     #diphthongs
-    for i,c in enumerate(['2','4','6']):
+    for i,c in enumerate(['2','4','6'] if args.c else diphArp):
         button = pygbutton.PygButton((375, 640+(i*40), 30, 30), c)
-        button.bgcolor = Color("lightgreen")
-        celexButtons.append(button)
-    for i,c in enumerate(['7','8','9','H','P']):
-        button = pygbutton.PygButton((415, 640+(i*40), 30, 30), c)
-        button.bgcolor = Color("lightgreen")
-        celexButtons.append(button)
+        button.bgcolor = Color("lightgreen") if args.c else colours[c]
+        altVowButtons.append(button)
+    if args.c:    
+        for i,c in enumerate(['7','8','9','H','P']):
+            button = pygbutton.PygButton((415, 640+(i*40), 30, 30), c)
+            button.bgcolor = Color("lightgreen")
+            altVowButtons.append(button)
     # union/intersect button
     button = pygbutton.PygButton((190,720,30,30),'U'.decode('utf8'))
     button.bgcolor = Color('darkolivegreen2')
@@ -523,7 +497,7 @@ def makeButtons():
         button.bgcolor = Color('darkolivegreen4')
         onOffButtons.append(button)      
 
-    return (vowButtons,onOffButtons,celexButtons)
+    return (vowButtons,onOffButtons,altVowButtons)
 
 def loadingMessage(surface, font, message):
     # display loading message
@@ -635,127 +609,296 @@ def updateDisplayed(displayed, button, plot):
 
 def writeInfo(v, plot):
     # update textlist to write to the info square (lower right)
-    plot.textList = ['vowel: '+v.name,'celex: '+v.celex,'F1: '+str(v.F1),
+    plot.textList = ['vowel: '+v.name,'celex: '+v.altVow,'F1: '+str(v.F1),
              'F2: '+str(v.F2),'stress: '+v.stress,
              'duration: '+v.duration+' ms','word: '+v.word,
              'time: '+v.time,'environ.: '+v.pPhone+' v '+v.fPhone,
              'max formants: '+v.maxForm]
     if args.f0: plot.textList += ['pitch: '+ v.pitch]
 
+def initializeSettings(sett, plot):
+    # set memory lists
+    sett.displayMemory = [plot.vowButtons] # list of all vowel plots up to the last save
+    sett.logMemory = [plot.allLogs] # list of all log dicts up to the last save
+    sett.praatLog = join(os.getcwd(),'praatLog') # set path of praatlog file (location of output of praat)     
+    #initialize all buttons (permanent and vowel tokens)
+    sett.permButtons = makeButtons() # make permanent buttons (vowel buttons, display all/none buttons)
+    sett.permDisplay = sett.permButtons[0]+sett.permButtons[1]+sett.permButtons[2] #put all permanent buttons in a list so they can be displayed
+    #get info from all formant.txt files
+    getFiles(sett)
+    # make rendered text objects to draw on screen 
+    sett.F1,sett.F2 = (myfont.render('F1',1,Color('grey87')),myfont.render('F2',1,Color('grey87')))
+    sett.arpLabel = myfont.render('ARPABET',1,BLACK)
+    sett.celLabel = myfont.render('CELEX' if args.c else 'UNREDUCED',1,BLACK)   
+    # make dictionary to log changes to
+    plot.allLogs = {f[0]:[] for f in sett.files} 
+    plot.vowButtons = getVowels(plot, sett)
+
+def quit(sett):
+    call(['rm', sett.praatLog]) # sanity check to remove praat log (if it still exists)
+    pygame.quit() 
+    sys.exit() 
+
+def selectRange(plot, sett, pressCTRLA, event):
+    pressed = pygame.key.get_pressed()
+    T,L,B,R = None,None,None,None # Top, Left, Bottom, Right of the section of the plot you are selecting
+    if event.type == MOUSEBUTTONDOWN: # click down to start selecting a section of the plot
+        sett.start = pygame.mouse.get_pos()
+        sett.FPS = 50 # increase frames per second for smooth drawing of selection box (temporary)
+    elif sett.start: 
+        sett.stop = pygame.mouse.get_pos() # get current position of mouse 
+        L,R = (sett.start[0],sett.stop[0]) if sett.start[0] < sett.stop[0] else (sett.stop[0],sett.start[0]) # get dimensions of rectangle currently selected
+        T,B = (sett.start[1],sett.stop[1]) if sett.start[1] < sett.stop[1] else (sett.stop[1],sett.start[1])
+        sett.zoomLines = [(L,T),(R,T),(R,B),(L,B)] # define dimensions of lines to draw (showing selection)
+        sett.vowelChange = True                    
+        if event.type == MOUSEBUTTONUP: # when you're finally done with the clicking and the dragging
+            if not (L < 10 or R > plot.width or T < 10 or B > plot.height or T == B or L == R): # make sure you haven't selected outside the plot
+                sett.FPS = 10 # resume normal frame rate
+                if pressCTRLA: # if removing a selection
+                    reason = '' 
+                    if (pressed[shft[0]] or pressed[shft[1]]): # get a reason for the removal if shift is pressed
+                        reason = inputbox.ask(plot.display,'Reason ')
+                        if not reason:
+                            sett.vowelChange = True 
+                            sett.zoomLines = None #stop drawing lines
+                            sett.start, sett.stop = (),() # reset start and stop tuples to default
+                            return 'break' # if no reason is given then don't remove the tokens
+                    sett.displayMemory += [[v for v in plot.vowButtons]] # make backup of display 
+                    sett.logMemory += [copy.deepcopy(plot.allLogs)] # make backup of log
+                    clearRange((T,R,B,L), reason, plot, within = sett.vowList) # clear all vowels currently displayed to screen in selected area
+                    textList = []
+                else: # if zooming in 
+                    resize((T,R,B,L), plot) # zoom in to to selected area
+                    for b in sett.permButtons[1]: # set zoom button caption 
+                        if b.caption == 'Zoom':
+                            b.caption = 'Reset Zoom'
+            sett.zoomLines = None
+            sett.start, sett.stop = (),()
+
+def allVowels(plot, sett, showAll = True):
+    # displays all vowels to screen if showAll else clears all vowels from screen
+    for b in sett.permButtons[0]+sett.permButtons[2]:
+        b.font.set_bold(showAll)
+        b._update()
+    sett.vowList = plot.vowButtons if showAll else []
+    plot.arpDisplayed = [b.caption for b in sett.permButtons[0]] if showAll else []
+    plot.altDisplayed = [b.caption for b in sett.permButtons[2]]+['NA'] if showAll else []
+    plot.filtered = []
+    plot.textList = []
+    plot.minDur = None
+    plot.filtWrd = None
+    sett.vowelChange = True
+
+def togglePlay(sett, button):
+    if not sett.play: 
+        sett.play = True
+        sett.FPS = 30 # increase frames per second so that the vowel you're currently on is played
+        button.bgcolor = Color("darkolivegreen4")
+    else: 
+        sett.play = False 
+        sett.FPS = 10 # resume regular frame rate
+        button.bgcolor = Color("darkolivegreen2")
+
+def drawEllipse(sett, plot, button):
+    try:
+        if sett.stdDevCounter == 0:
+            confidenceEllipse([(form.F1,form.F2) for form in sett.vowList],1, plot)
+            sett.stdDevCounter = 1
+            button.caption = 'Std Dev 1'
+            button.bgcolor = Color("darkolivegreen4")
+        elif sett.stdDevCounter == 1:
+            confidenceEllipse([(form.F1,form.F2) for form in sett.vowList],2, plot)
+            sett.stdDevCounter = 2
+            button.caption = 'Std Dev 2'
+        elif sett.stdDevCounter == 2:
+            confidenceEllipse([(form.F1,form.F2) for form in sett.vowList],3, plot)
+            sett.stdDevCounter = 3
+            button.caption = 'Std Dev 3'
+        
+        else:
+            plot.ellip = []
+            button.caption = 'Std Dev'
+            button.bgcolor = Color("darkolivegreen2")
+            sett.stdDevCounter = 0
+    except:
+        plot.ellip = []
+        button.caption = 'Std Dev'
+        button.bgcolor = Color("darkolivegreen2")
+        sett.stdDevCounter = 0
+    sett.vowelChange = True
+
+def filterVowels(sett, plot, button):
+    # filters vowels by duration or by word
+    # (not displayed but not removed yet)
+    plot.minDur = None
+    sett.vowelChange = True
+    if 'Dur' in button.caption:
+        while not plot.minDur:    # ask user to input a minimum duration in a textbox on screen
+            plot.minDur = inputbox.ask(plot.display,'Minimum Duration (ms)') 
+            try:                                    
+                plot.minDur = int(plot.minDur)
+                break
+            except: 
+                if plot.minDur != '':
+                    plot.minDur = None
+                else: break
+        plot.filtered = [v for v in sett.vowList if int(v.duration) < plot.minDur]
+        # don't filter anything if no minimum duration is given
+        if plot.filtered and not plot.minDur == '': # change button caption 
+            button.caption = 'Rmv.Dur.Filt'
+            button.font = pygame.font.SysFont('courier', 14)
+    else: # filter according to the word
+        plot.filtWrd = inputbox.ask(plot.display,'Remove word').strip().upper() # ask user to input word to remove
+        plot.filtered = [v for v in sett.vowList if v.word == plot.filtWrd]
+        if plot.filtered and plot.filtWrd: 
+            button.caption = 'Rmv.Wrd.Filt'
+            button.font = pygame.font.SysFont('courier', 14) 
+
+def removeFiltered(sett, plot, button):
+    # removes filtered vowel tokens (by duration or word, not stress)
+    yesno = None
+    while not yesno: # double check they actually want to remove the vowels
+        yesno = inputbox.ask(plot.display,'Remove %r filtered vowels? y/n' % len(plot.filtered)).strip().lower()
+        if yesno not in ['y','n']:
+            if yesno == 'yes': plot.minDur = 'y'
+            elif yesno == 'no': plot.minDur = 'n'
+            else: yesno = None
+    sett.vowelChange = True
+    if yesno == 'y': # if yes, remove all the vowels in filtered
+        sett.displayMemory += [[v for v in plot.vowButtons]]
+        sett.logMemory += [copy.deepcopy(plot.allLogs)]
+        for f in plot.filtered:
+            reason = 'filtered: below minimum duration of %d ms' % plot.minDur if 'Dur' in button.caption else 'filtered: word %r' % plot.filtWrd
+            clear(f,reason, plot)
+            plot.vowButtons.remove(f) 
+    # reset buttons and appropriate lists
+    plot.filtered = []
+    plot.minDur = None
+    sett.vowelChange = True
+    button.caption = 'Dur.Filter' if 'Dur' in button.caption else 'Wrd.Filter'
+    button.font = smallButtonFont
+    button._update()
+
+def resumeFromLog(sett, plot):
+    sett.displayMemory += [[v for v in plot.vowButtons]]
+    sett.logMemory += [copy.deepcopy(plot.allLogs)]
+    for v in plot.vowButtons: 
+        if isinstance(v.alreadyCorrected,tuple): # change vowel if it's been changed and logged in the log file
+            x,y = calculateVowelLocation((v.alreadyCorrected[2],v.alreadyCorrected[3]), plot) 
+            buttonRect = pygame.Rect(x,y, 8, 8)
+            buttonRect.center = (x,y)
+            button = pygbutton.PygButton(buttonRect, '►'.decode('utf8'),border = False) 
+            button.bgcolor = WHITE 
+            button.fgcolor = v.button.bgcolor
+            newV = v.makeAlternate(v.alreadyCorrected[2],v.alreadyCorrected[3],button) # make new vowel
+            newV.time, newV.maxForm = v.alreadyCorrected[:2] # update maxforms and time 
+            newV.alreadyCorrected = None 
+            plot.vowButtons.remove(v) 
+            plot.vowButtons.append(newV)
+    plot.vowButtons = [v for v in plot.vowButtons if v.alreadyCorrected != 'removed'] # remove vowel if it's been removed in the log file
+
+def drawToScreen(sett, plot, NOTPLOTRECTS):
+    # draw the vowel plot if it has been updated
+    if sett.vowelChange:
+        plot.display.fill(WHITE)
+        if plot.ellip: # draw confidence ellipse
+            plot.display.blit(plot.ellip[0],plot.ellip[1])
+        plot.display.blit(sett.F1,(plot.width-myfont.size('F1')[0],plot.height/2)) # draw F1 and F2 as axis labels for the plot
+        plot.display.blit(sett.F2,(plot.width/2,10))
+        drawGrid(numFont, plot) # draw the grid on the plot
+        if sett.zoomLines: pygame.draw.lines(plot.display,BLACK,True,sett.zoomLines,1) # draw the box to zoom to/remove vowels from 
+        for b in [v.button for v in sett.vowList]: # draw all vowel tokens to the screen
+            b.draw(plot.display) 
+        sett.vowelChange = False
+    else:  # if it hasn't been updated, update the rest of the screen only
+        for r in NOTPLOTRECTS:
+            pygame.draw.rect(plot.display,WHITE,r)
+
+    pygame.draw.lines(plot.display,BLACK,True, [(490,plot.height),(plot.width,plot.height),(plot.width,840),(490,840)],2) # draw rectangle to display vowel info
+    pygame.draw.lines(plot.display,BLACK,True, [(10,10),(plot.width,10),(plot.width,plot.height),(10,plot.height)],2) # draw rectangle to display vowel buttons
+    tokenNum = myfont.render(str(len(sett.vowList)),1,BLACK) # render and draw the number of tokens currently on the screen 
+    plot.display.blit(tokenNum,(710,820))
+    pygame.draw.lines(plot.display,BLACK,True,[(10,630),(185,630),(185,840),(10,840)],2) # draw the box for the arpabet vowels
+    pygame.draw.lines(plot.display,BLACK,True,[(225,630),(480,630),(480,840),(225,840)],2) #draw the box for the celex vowels 
+    plot.display.blit(sett.celLabel,(320,605)) # draw CELEX 
+    plot.display.blit(sett.arpLabel,(50,605)) # draw ARPABET
+
+    # draw the minimum duration or the removed word if set
+    if (plot.minDur or plot.filtWrd) and plot.filtered:
+        if plot.minDur:
+            filteredCode = ( miniFont.render('Minimum Duration: ',1,BLACK), miniFont.render(str(plot.minDur),1,BLACK) )
+            filtsize = miniFont.size(str(plot.minDur))
+        else:
+            filteredCode = ( miniFont.render('Filtered Word: ',1,BLACK) , miniFont.render(str(plot.filtWrd),1,BLACK) )
+            filtsize = miniFont.size(str(plot.filtWrd))
+        for i,f in enumerate(filteredCode):    
+            plot.display.blit(f,(WINDOWWIDTH-(filtsize[0]+10 if i else 110),WINDOWHEIGHT-50 + i*(filtsize[1]+3)))
+    
+    for b in sett.permDisplay: # draw all buttons
+        b.draw(plot.display)
+    
+    if plot.textList:    # draw info for last vowel scrolled over to screen
+        for i,t in enumerate(plot.textList):
+            label = textListFont.render(t, 1, BLACK)
+            plot.display.blit(label, (500, 605+(21*i)))
+    
+    if sett.chooseFormants: # draw alternate formant buttons (when in choose formant mode)
+        for xf in plot.xFormButtons:
+            xf.button.draw(plot.display)
+    
+    pygame.display.update() # update screen
+
 def main():
     # this is where the magic happens
-    global FPS 
     #initialize pygame surfaces and clocks
     pygame.init()    
     FPSCLOCK = pygame.time.Clock()       
     DISPLAYSURFACE = pygame.display.set_mode((WINDOWWIDTH, WINDOWHEIGHT)) # create window according to dimensions
-    plot = vowelPlot(DISPLAYSURFACE)
+    plot = plotmishClasses.vowelPlot(DISPLAYSURFACE) 
     NOTPLOTRECTS = (pygame.Rect(plot.width,0,WINDOWWIDTH - plot.width, plot.height),
-                pygame.Rect(0,plot.height,WINDOWWIDTH,WINDOWHEIGHT - plot.height)) 
+            pygame.Rect(0,plot.height,WINDOWWIDTH,WINDOWHEIGHT - plot.height))
     caption = 'Plotmish - '+args.k if args.k else 'Plotmish'
-    pygame.display.set_caption(caption) # set window caption
-    #get info from all formant.txt files
-    files = getFiles()
-    #get all vowels in files 
-    # make dictionary to log changes to   
-    plot.allLogs = {f[0]:[] for f in files} 
-    # make rendered text objects to draw on screen
-    F1,F2 = (myfont.render('F1',1,Color('grey87')),myfont.render('F2',1,Color('grey87')))
-    arpLabel = myfont.render('ARPABET',1,BLACK)
-    celLabel = myfont.render('CELEX',1,BLACK)
-    #initialize all buttons (permanent and vowel tokens)
-    permButtons = makeButtons() # make permanent buttons (vowel buttons, display all/none buttons)
-    permDisplay = permButtons[0]+permButtons[1]+permButtons[2] #put all permanent buttons in a list so they can be displayed
-    plot.vowButtons = getVowels(plot, files)
-    vowList = [] # list to write vowel that are currently displayed
-    # set memory lists
-    displayMemory = [plot.vowButtons] # list of all vowel plots up to the last save
-    logMemory = [plot.allLogs] # list of all log dicts up to the last save
-    praatLog = join(os.getcwd(),'praatLog') # set path of praatlog file (location of output of praat) 
-    call(['rm', praatLog]) # remove praatlog if it exists (it shouldn't but just in case)
-    # set variables for drawing lines when zooming or removing a range of buttons
-    start, stop = (),() # tuples of the corners of the section of the plot to zoom in on (or remove buttons from)
-    zoomLines = None # lines to draw when zooming or removing a group of buttons
-    # set default behaviours
-    vowelChange = True # set to True to change the vowel plot (necessary for continuous running with large numbers of vowels)
-    play = False # indicates whether play button in on or off
-    zooming = False # whether zoom button is on or off (and zoom mode is on)
-    stdDevCounter = 0 #counter for drawing different ellipse sizes
-    formType = 'dur' # remeasure mode (either 'dur' or 'num')
-    praatMode = True # true if remeasure mode is praat (button caption is remeasureP)
-    vowelMode = 'union' # vowel display mode: union or intersect of vowels in arpDisplayed and celDisplayed
-    chooseFormants = False  # True if you are re-evaluating formant measurements 
-    praatInfo = [] # list to write info from praatlog
-    lastVowel = None # last vowel measured (for used with "check last" button)
+    pygame.display.set_caption(caption) # set window caption 
+    #initialize plotmish settings
+    sett = plotmishClasses.Settings()
+    initializeSettings(sett, plot)
+    # remove praatlog if it exists (it shouldn't but just in case)
+    call(['rm', sett.praatLog])
 
     while True: # main loop
         ## this is the exciting bit
         for event in pygame.event.get(): # event handling loop
             ## process when quitting the program (hit escape to quit)
             if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
-                call(['rm', praatLog]) # sanity check to remove praat log (if it still exists)
-                pygame.quit() 
-                sys.exit()            
-            # deal with zooming and selecting a range of vowels
+                quit(sett)           
+            ## deal with zooming and selecting a range of vowels
             pressed = pygame.key.get_pressed() # get all buttons currently pressed
-            pressCTRLA = (pressed[ctrl[0]] or pressed[ctrl[1]]) and pressed[K_a] #boolean indicating if ctrl+a is pressed (for selecting a range) 
-            if zooming or pressCTRLA:
-                T,L,B,R = None,None,None,None # Top, Left, Bottom, Right of the section of the plot you are selecting
-                if event.type == MOUSEBUTTONDOWN: # click down to start selecting a section of the plot
-                    start = pygame.mouse.get_pos()
-                    FPS = 50 # increase frames per second for smooth drawing of selection box (temporary)
-                elif start: 
-                    stop = pygame.mouse.get_pos() # get current position of mouse 
-                    L,R = (start[0],stop[0]) if start[0] < stop[0] else (stop[0],start[0]) # get dimensions of rectangle currently selected
-                    T,B = (start[1],stop[1]) if start[1] < stop[1] else (stop[1],start[1])
-                    zoomLines = [(L,T),(R,T),(R,B),(L,B)] # define dimensions of lines to draw (showing selection)
-                    vowelChange = True                    
-                    if event.type == MOUSEBUTTONUP: # when you're finally done with the clicking and the dragging
-                        if not (L < 10 or R > plot.width or T < 10 or B > plot.height or T == B or L == R): # make sure you haven't selected outside the plot
-                            FPS = 10 # resume normal frame rate
-                            if pressCTRLA: # if removing a selection
-                                reason = '' 
-                                if (pressed[shft[0]] or pressed[shft[1]]): # get a reason for the removal if shift is pressed
-                                    reason = inputbox.ask(plot.display,'Reason ')
-                                    if not reason:
-                                        vowelChange = True 
-                                        zoomLines = None #stop drawing lines
-                                        start, stop = (),() # reset start and stop tuples to default
-                                        break # if no reason is given then don't remove the tokens
-                                displayMemory += [[v for v in plot.vowButtons]] # make backup of display 
-                                logMemory += [copy.deepcopy(plot.allLogs)] # make backup of log
-                                clearRange((T,R,B,L), reason, plot, within = vowList) # clear all vowels currently displayed to screen in selected area
-                                textList = []
-                            else: # if zooming in 
-                                resize((T,R,B,L), plot) # zoom in to to selected area
-                                for b in permButtons[1]: # set zoom button caption 
-                                    if b.caption == 'Zoom':
-                                        b.caption = 'Reset Zoom'
-                        zoomLines = None
-                        start, stop = (),()
-            elif zoomLines: 
-                zoomLines = None
-                start, stop = (),()
-                vowelChange = True
+            pressCTRLA = (pressed[ctrl[0]] or pressed[ctrl[1]]) and pressed[K_a] # boolean indicating if ctrl+a is pressed (for selecting a range) 
+            if sett.zooming or pressCTRLA:
+                selectRange(plot, sett, pressCTRLA, event)
+            elif sett.zoomLines:
+                # reset defaults  
+                sett.zoomLines = None
+                sett.start, sett.stop = (),()
+                sett.vowelChange = True
             # if clicking buttons...
-            if not chooseFormants:  # before you have selected a vowel for remeasurement  
-                for b in permButtons[0]: # click a button with an arpabet code to display it on the screen 
+            if not sett.chooseFormants:  # before you have selected a vowel for remeasurement  
+                for b in sett.permButtons[0]: # click a button with an arpabet code to display it on the screen 
                     if 'click' in b.handleEvent(event):
                         plot.arpDisplayed = updateDisplayed(plot.arpDisplayed, b, plot)
-                        vowelChange = True
+                        sett.vowelChange = True
 
-
-                for b in permButtons[2]: # click a button with a celex code to display it on the screen 
+                for b in sett.permButtons[2]: # click a button with a celex code to display it on the screen 
                     if 'click' in b.handleEvent(event):
-                        plot.celDisplayed = updateDisplayed(plot.celDisplayed, b, plot)
-                        vowelChange = True
+                        plot.altDisplayed = updateDisplayed(plot.altDisplayed, b, plot)
+                        sett.vowelChange = True
 
-                for b in permButtons[1]: # deal with buttons on right side of the screen
+                for b in sett.permButtons[1]: # deal with buttons on right side of the screen
                     if b.font.get_bold(): b.font.set_bold(False) # makes sure button isn't bolded (happens for some reason ?)
                     # button says 'Saved' if all changes have been saved and 'Save' otherwise
-                    if 'Saved' in b.caption and plot.allLogs != {f[0]:[] for f in files}:
+                    if 'Saved' in b.caption and plot.allLogs != {f[0]:[] for f in sett.files}:
                         b.caption = 'Save'
-                        vowelChange = True
+                        sett.vowelChange = True
                     # button says Rmv if there are filtered tokens (can't filter by both word and duration at the same time)
                     if (b.caption == 'Rmv.Dur.Filt' or b.caption == 'Rmv.Wrd.Filt') and not plot.filtered:
                         b.caption = 'Dur.Filter' if b.caption == 'Rmv.Dur.Filt' else 'Wrd.Filter'
@@ -764,151 +907,65 @@ def main():
                     # deal with buttons if they're clicked
                     if 'click' in b.handleEvent(event):
                         if b.caption == 'Show All': # show all tokens on the screen 
-                            for b in permButtons[0]+permButtons[2]:
-                                b.font.set_bold(True)
-                                b._update()
-                            vowList = plot.vowButtons
-                            plot.arpDisplayed = [b.caption for b in permButtons[0]]
-                            plot.celDisplayed = [b.caption for b in permButtons[2]]+['NA']
-                            plot.filtered = []
-                            plot.minDur = None
-                            plot.filtWrd = None
-                            vowelChange = True
+                            allVowels(plot, sett)
                         if b.caption == 'Clear': # show no buttons on the screen 
-                            for b in permButtons[0]+permButtons[2]:
-                                b.font.set_bold(False)
-                                b._update()
-                            plot.arpDisplayed = []
-                            plot.celDisplayed = []
-                            vowList = []
-                            plot.textList = []
-                            plot.filtered = []
-                            plot.minDur = None
-                            plot.filtWrd = None
-                            vowelChange = True
+                            allVowels(plot, sett, showAll = False)
                         if b.caption == 'Play': # start/stop play mode
-                            if not play: 
-                                play = True
-                                FPS = 30 # increase frames per second so that the vowel you're currently on is played
-                                b.bgcolor = Color("darkolivegreen4")
-                            else: 
-                                play = False 
-                                FPS = 10 # resume regular frame rate
-                                b.bgcolor = Color("darkolivegreen2")
+                            togglePlay(sett, b)
                         if 'Std Dev' in b.caption: # draw ellipses based on 1-3 standard deviations from the mean (will not work if numpy not found)
-                            try:
-                                if stdDevCounter == 0:
-                                    confidenceEllipse([(form.F1,form.F2) for form in vowList],1, plot)
-                                    stdDevCounter = 1
-                                    b.caption = 'Std Dev 1'
-                                    b.bgcolor = Color("darkolivegreen4")
-                                elif stdDevCounter == 1:
-                                    confidenceEllipse([(form.F1,form.F2) for form in vowList],2, plot)
-                                    stdDevCounter = 2
-                                    b.caption = 'Std Dev 2'
-                                elif stdDevCounter == 2:
-                                    confidenceEllipse([(form.F1,form.F2) for form in vowList],3, plot)
-                                    stdDevCounter = 3
-                                    b.caption = 'Std Dev 3'
-                                
-                                else:
-                                    plot.ellip = []
-                                    b.caption = 'Std Dev'
-                                    b.bgcolor = Color("darkolivegreen2")
-                                    stdDevCounter = 0
-                            except:
-                                plot.ellip = []
-                                b.caption = 'Std Dev'
-                                b.bgcolor = Color("darkolivegreen2")
-                                stdDevCounter = 0
-                            vowelChange = True
+                            drawEllipse(sett, plot, b)
                         if 'Remeasure' in b.caption: # change remeasurement mode (praat, %duration, max formants)
                             if b.caption == 'Remeasure%':
-                                formType = 'num'
+                                sett.formType = 'num'
                                 b.caption = 'RemeasureF'
                             elif b.caption == 'RemeasureF':
-                                praatMode = True
+                                sett.praatMode = True
                                 b.caption = 'RemeasureP'
                             else:                        
-                                praatMode = False
-                                formType = 'dur'
+                                sett.praatMode = False
+                                sett.formType = 'dur'
                                 b.caption = 'Remeasure%'
                         
-                        if b.caption == 'Cancel' and praatMode: #quit praat if currently remeasuring using praat
+                        if b.caption == 'Cancel' and sett.praatMode: #quit praat if currently remeasuring using praat
                             call(['support_scripts/sendpraat', '0', 'praat', 'Quit'])
 
                         if b.caption == 'Dur.Filter' and not plot.filtered: # remove vowels based on minimum duration
-                            plot.minDur = None
-                            vowelChange = True
-                            while not plot.minDur:    # ask user to input a minimum duration in a textbox on screen
-                                plot.minDur = inputbox.ask(plot.display,'Minimum Duration (ms)') 
-                                try:                                    
-                                    plot.minDur = int(plot.minDur)
-                                    break
-                                except: 
-                                    if plot.minDur != '':
-                                        plot.minDur = None
-                                    else: break
-                            for v in vowList: # add vowels to a filtered list (not displayed but not removed yet)
-                                if int(v.duration) < plot.minDur:
-                                    plot.filtered += [v]
-                            if plot.minDur == '' or not plot.filtered: # don't filter anything if no minimum duration is given
-                                break
-                            if plot.filtered: # change button caption 
-                                b.caption = 'Rmv.Dur.Filt'
-                                b.font = pygame.font.SysFont('courier', 14) 
+                            filterVowels(sett, plot, b)
                         elif b.caption == 'Rmv.Dur.Filt' and plot.filtered: # remove all filtered vowels
-                            yesno = None
-                            while not yesno: # double check they actually want to remove the vowels
-                                yesno = inputbox.ask(plot.display,'Remove %r filtered vowels? y/n' % len(plot.filtered)).strip().lower()
-                                if yesno not in ['y','n']:
-                                    if yesno == 'yes': plot.minDur = 'y'
-                                    elif yesno == 'no': plot.minDur = 'n'
-                                    else: yesno = None
-                            vowelChange = True
-                            if yesno == 'y': # if yes, remove all the vowels in filtered
-                                displayMemory += [[v for v in plot.vowButtons]]
-                                logMemory += [copy.deepcopy(plot.allLogs)]
-                                for f in plot.filtered:
-                                    reason = 'filtered: below minimum duration of %d ms' % plot.minDur
-                                    clear(f,reason, plot)
-                                    plot.vowButtons.remove(f) 
-                            # reset buttons and appropriate lists
-                            plot.filtered = []
-                            plot.minDur = None
-                            vowelChange = True
-                            b.caption = 'Dur.Filter'
-                            b.font = smallButtonFont
-                            b._update()
-
+                            removeFiltered(sett, plot, b)
+                        
+                        if b.caption == 'Wrd.Filter' and not plot.filtered: # remove all vowels of a certain orthography (same as dur filter)
+                            filterVowels(sett, plot, b)
+                        elif b.caption == 'Rmv.Wrd.Filt' and plot.filtered: # remove all filtered vowels (by word)
+                            removeFiltered(sett, plot, b)
                         
                         if b.caption in ['1','2','0']: # change stress button colours according to what should be displayed
                             if b.bgcolor == Color("darkolivegreen4"): b.bgcolor = Color("darkolivegreen2")
                             else: b.bgcolor = Color("darkolivegreen4") 
-                            vowelChange = True
+                            sett.vowelChange = True
                         
                         if 'Save' in b.caption: # save all changes to -corrLog.csv files
                             writeLogs(plot)
-                            plot.allLogs = {f[0]:[] for f in files}
+                            plot.allLogs = {f[0]:[] for f in sett.files}
                             b.caption = 'Saved'
-                            vowelChange = True
-                            displayMemory = [[v for v in plot.vowButtons]]
+                            sett.vowelChange = True
+                            sett.displayMemory = [[v for v in plot.vowButtons]]
                         
                         if 'U'.decode('utf8') == b.caption: # change from union to intersect mode (for arp and celex vowels)
-                            vowelMode = 'intersect'
+                            sett.vowelMode = 'intersect'
                             b.caption = '∩'.decode('utf8')
-                            vowelChange = True
+                            sett.vowelChange = True
                         elif '∩'.decode('utf8') == b.caption: # change from intersect to union mode (for arp and celex vowels)
-                            vowelMode = 'union'
+                            sett.vowelMode = 'union'
                             b.caption = 'U'.decode('utf8')
-                            vowelChange = True
+                            sett.vowelChange = True
  
                         if b.caption == 'Undo': # undo previous change by restoring the last entry in displayMemory and logMemory
-                            plot.vowButtons = displayMemory.pop()
-                            plot.allLogs = copy.deepcopy(logMemory.pop())
-                            if len(displayMemory) < 2: displayMemory = [[v for v in plot.vowButtons]]
-                            if len(logMemory) <2: logMemory = [copy.deepcopy(plot.allLogs)]
-                            vowelChange = True
+                            plot.vowButtons = sett.displayMemory.pop()
+                            plot.allLogs = copy.deepcopy(sett.logMemory.pop())
+                            if len(sett.displayMemory) < 2: sett.displayMemory = [[v for v in plot.vowButtons]]
+                            if len(sett.logMemory) <2: sett.logMemory = [copy.deepcopy(plot.allLogs)]
+                            sett.vowelChange = True
                         
                         if b.caption == 'Rmv. Bad': # change the reason to remove a vowel (because it's bad or because its been checked and is ok)
                             b.caption = 'Rmv. OK'
@@ -921,78 +978,28 @@ def main():
 
                         if b.caption == 'Zoom': # start zoom mode (clicking and dragging on the plot will now zoom in to that region)
                             if b.bgcolor == Color('darkolivegreen2'):
-                                zooming = True
+                                sett.zooming = True
                                 b.bgcolor = Color('darkolivegreen4')
-                                start, stop = (),()
+                                sett.start, sett.stop = (),()
                             else:
-                                zooming = False
+                                sett.zooming = False
                                 b.bgcolor = Color('darkolivegreen2')
-                                start, stop = (),()
+                                sett.start, sett.stop = (),()
+                        
                         elif b.caption == 'Reset Zoom': # reset zoom so all vowels are displayed
                             resize(plot.defaultMaxMin, plot) 
                             b.caption = 'Zoom'
-                            vowelChange = True
+                            sett.vowelChange = True
                         
                         if b.caption == 'Check Last': # open praat to the last vowel measured (does not allow remeasuring)
-                            if lastVowel: 
+                            if sett.lastVowel: 
                                 call(['open', args.p])
-                                call(['support_scripts/sendpraat', '0', 'praat', 'execute \"'+join(os.getcwd(),'support_scripts/zoomIn.praat')+'\" \"' + lastVowel.wFile + '\" \"'+join(os.getcwd(),'praatLog')+ '\" ' + lastVowel.time + ' 0 ' + lastVowel.maxForm+'"'])
+                                call(['support_scripts/sendpraat', '0', 'praat', 'execute \"'+join(os.getcwd(),'support_scripts/zoomIn.praat')+'\" \"' + sett.lastVowel.wFile + '\" \"'+join(os.getcwd(),'praatLog')+ '\" ' + sett.lastVowel.time + ' 0 ' + sett.lastVowel.maxForm+'"'])
 
                         if b.caption == 'Resume' and b.bgcolor != Color('darkolivegreen4'): # set vowels on the screen according to remeasurements in the log files
-                            displayMemory += [[v for v in plot.vowButtons]]
-                            logMemory += [copy.deepcopy(plot.allLogs)]
-                            for v in plot.vowButtons: 
-                                if isinstance(v.alreadyCorrected,tuple): # change vowel if it's been changed and logged in the log file
-                                    x,y = calculateVowelLocation((v.alreadyCorrected[2],v.alreadyCorrected[3]), plot) 
-                                    buttonRect = pygame.Rect(x,y, 8, 8)
-                                    buttonRect.center = (x,y)
-                                    button = pygbutton.PygButton(buttonRect, '►'.decode('utf8'),border = False) 
-                                    button.bgcolor = WHITE 
-                                    button.fgcolor = v.button.bgcolor
-                                    newV = v.makeAlternate(v.alreadyCorrected[2],v.alreadyCorrected[3],button) # make new vowel
-                                    newV.time, newV.maxForm = v.alreadyCorrected[:2] # update maxforms and time 
-                                    newV.alreadyCorrected = None 
-                                    plot.vowButtons.remove(v) 
-                                    plot.vowButtons.append(newV)
-
-                            plot.vowButtons = [v for v in plot.vowButtons if v.alreadyCorrected != 'removed'] # remove vowel if it's been removed in the log file
+                            resumeFromLog(sett, plot)
                             b.bgcolor = Color('darkolivegreen4') 
-                            vowelChange = True
-
-                        if b.caption == 'Wrd.Filter' and not plot.filtered: # remove all vowels of a certain orthography (same as dur filter)
-                            plot.filtWrd = inputbox.ask(plot.display,'Remove word').strip().upper() # ask user to input word to remove
-                            for v in vowList:
-                                if v.word == plot.filtWrd:
-                                    plot.filtered += [v]
-                            if not plot.filtWrd or not plot.filtered: # if a word isn't entered or there are no vowels that occur in that word, break
-                                vowelChange = True
-                                break
-                            if plot.filtered: 
-                                b.caption = 'Rmv.Wrd.Filt'
-                                b.font = pygame.font.SysFont('courier', 14) 
-                                vowelChange = True
-                        elif b.caption == 'Rmv.Wrd.Filt' and plot.filtered: # remove all filtered vowels (by word)
-                            yesno = None
-                            while not yesno: # double check they want them removed
-                                yesno = inputbox.ask(plot.display,'Remove %r filtered vowels? y/n' % len(plot.filtered)).strip().lower()
-                                if yesno not in ['y','n']:
-                                    if yesno.lower().strip() == 'yes': yesno = 'y'
-                                    elif yesno.lower().strip() == 'no': yesno = 'n'
-                            vowelChange = True
-                            if yesno == 'y': # if yes then remove all filtered vowels
-                                displayMemory += [[v for v in plot.vowButtons]]
-                                logMemory += [copy.deepcopy(plot.allLogs)]
-                                for f in plot.filtered:
-                                    reason = 'filtered: word %r' % plot.filtWrd
-                                    clear(f,reason,plot)
-                                    plot.vowButtons.remove(f) 
-                            # reset buttons and appropriate lists
-                            plot.filtered = []
-                            plot.filtWrd = None
-                            vowelChange = True
-                            b.caption = 'Wrd.Filter'
-                            b.font = smallButtonFont
-                            b._update()
+                            sett.vowelChange = True
 
                 if plot.currentVowel and 'click' in plot.currentVowel.button.handleEvent(event) and not pressCTRLA: # if a vowel button is clicked
                     if pressed[ctrl[0]] or pressed[ctrl[1]]:   # hold control to remove the vowel
@@ -1000,29 +1007,29 @@ def main():
                         if pressed[shft[0]] or pressed[shft[1]]: # hold shift as well to add a comment before removing
                             reason = inputbox.ask(DISPLAYSURFACE,'Reason ')
                             if not reason: 
-                                vowelChange = True
+                                sett.vowelChange = True
                                 break
                         # reset buttons and appropriate lists and update memory
-                        displayMemory += [[v for v in plot.vowButtons]]
-                        logMemory += [copy.deepcopy(plot.allLogs)]
-                        vowelChange = True
+                        sett.displayMemory += [[v for v in plot.vowButtons]]
+                        sett.logMemory += [copy.deepcopy(plot.allLogs)]
+                        sett.vowelChange = True
                         clear(plot.currentVowel, reason, plot)
                         plot.vowButtons.remove(plot.currentVowel) 
                         plot.currentVowel = None
                         textList = []
 
                     else: # remeasure vowel 
-                        displayMemory += [[v for v in plot.vowButtons]] # update memory
-                        logMemory += [copy.deepcopy(plot.allLogs)]    
-                        if praatMode: # remeasure using praat (start by opening praat and going to appropriate location)
-                            call(['rm', praatLog])
+                        sett.displayMemory += [[v for v in plot.vowButtons]] # update memory
+                        sett.logMemory += [copy.deepcopy(plot.allLogs)]    
+                        if sett.praatMode: # remeasure using praat (start by opening praat and going to appropriate location)
+                            call(['rm', sett.praatLog])
                             message = 'runScript: \"support_scripts/zoomIn.praat\", %r, %r' % (plot.currentVowel.wFile,float(plot.currentVowel.time))
                             call(['open', args.p])
                             call(['support_scripts/sendpraat', '0', 'praat', 'execute \"'+join(os.getcwd(),'support_scripts/zoomIn.praat')+'\" \"' + plot.currentVowel.wFile + '\" \"'+join(os.getcwd(),'praatLog')+ '\" ' + plot.currentVowel.time + ' 1 '+plot.currentVowel.maxForm+'"'])  
-                            chooseFormants = True
+                            sett.chooseFormants = True
                                
-                        elif formType in plot.currentVowel.remeasureOpts: 
-                            forms = plot.currentVowel.numForms if formType == 'num' else plot.currentVowel.durForms # use either duration or maxform alternate 
+                        elif sett.formType in plot.currentVowel.remeasureOpts: 
+                            forms = plot.currentVowel.numForms if sett.formType == 'num' else plot.currentVowel.durForms # use either duration or maxform alternate 
                             for i,xform in enumerate(forms): # figure out where to write the alternate formant buttons (black buttons)
                                 x,y = calculateVowelLocation(xform, plot)
                                 buttonRect = pygame.Rect(x,y, 8, 8)
@@ -1031,7 +1038,7 @@ def main():
                                 button.bgcolor = BLACK # set colour of alternate formants to black
                                 button.fgcolor = BLACK
                                 alt = plot.currentVowel.makeAlternate(xform[0],xform[1],button)
-                                if formType == 'dur': # set new time or maxForms if changed 
+                                if sett.formType == 'dur': # set new time or maxForms if changed 
                                     alt.time = str(round(((float(alt.duration)/1000.0)*((i+1)*0.2))+float(alt.timeRange[0]),3))
                                 else:
                                     alt.maxForm = str(3+i)
@@ -1045,18 +1052,18 @@ def main():
                             button.fgcolor = plot.currentVowel.button.fgcolor
                             alt = plot.currentVowel.makeAlternate(plot.currentVowel.F1,plot.currentVowel.F2, button)
                             plot.xFormButtons += [alt]
-                            chooseFormants = True
+                            sett.chooseFormants = True
 
-                for v in vowList: # deal with all vowels currently displayed on screen
+                for v in sett.vowList: # deal with all vowels currently displayed on screen
                     if 'enter' in v.button.handleEvent(event):
                         # write the vowel information to the display bit (lower right of the screen)
                         writeInfo(v,plot)
                         plot.currentVowel = v
-                        if play: # play the vowel sound (if play mode is on), plays 25 milliseconds on either side of measurement point
+                        if sett.play: # play the vowel sound (if play mode is on), plays 25 milliseconds on either side of measurement point
                             call(['play',v.wFile,'trim',str(float(v.time)-0.1), '='+str(float(v.time)+0.1)])  
                 
             else:  # if chooseFormants == True
-                if praatMode: 
+                if sett.praatMode: 
                     if not plot.xFormButtons: # make alternate button for current F1 and F2 values (white button)
                         buttonRect = plot.currentVowel.button.rect.inflate(2,2)
                         button = pygbutton.PygButton(buttonRect, '◉'.decode('utf8'), border = False)
@@ -1064,11 +1071,11 @@ def main():
                         button.fgcolor = plot.currentVowel.button.fgcolor 
                         alt = plot.currentVowel.makeAlternate(plot.currentVowel.F1, plot.currentVowel.F2 ,button)
                         plot.xFormButtons = [alt]
-                    if isfile(praatLog): # this file exists if Log1 has been pressed in the open praat window
-                        praatInfo = [(p.split()[0].strip(), p.split()[1].strip() ,p.split()[2].strip(), p.split()[3].strip()) for p in open(praatLog,'rU').readlines()]
-                        call(['rm',praatLog])
-                    if praatInfo: # if a vowel has been remeasured in praat this will have info in it: (f1,f2,f0)
-                        for p in praatInfo: # make a button on the screen for each vowel measured in praat
+                    if isfile(sett.praatLog): # this file exists if Log1 has been pressed in the open praat window
+                        sett.praatInfo = [(p.split()[0].strip(), p.split()[1].strip() ,p.split()[2].strip(), p.split()[3].strip()) for p in open(sett.praatLog,'rU').readlines()]
+                        call(['rm',sett.praatLog])
+                    if sett.praatInfo: # if a vowel has been remeasured in praat this will have info in it: (f1,f2,f0)
+                        for p in sett.praatInfo: # make a button on the screen for each vowel measured in praat
                             x,y = calculateVowelLocation((float(p[1]),float(p[2])), plot)
                             buttonRect = pygame.Rect(x,y, 8, 8)
                             buttonRect.center = (x,y)
@@ -1080,15 +1087,15 @@ def main():
                             try: alt.pitch = p[3]
                             except: pass 
                             plot.xFormButtons += [alt]
-                        praatInfo = []
+                        sett.praatInfo = []
 
-                for b in permButtons[1]: # enable you to cancel a remeasurement if necessary with the cancel button
+                for b in sett.permButtons[1]: # enable you to cancel a remeasurement if necessary with the cancel button
                     if 'click' in b.handleEvent(event):
                         if 'Cancel'in b.caption:
                             plot.xFormButtons = []
-                            chooseFormants = False
+                            sett.chooseFormants = False
                             call(['support_scripts/sendpraat', '0', 'praat', 'Quit'])
-                            vowelChange = True
+                            sett.vowelChange = True
                             
 
                 for x in plot.xFormButtons: # choose new formant
@@ -1108,86 +1115,38 @@ def main():
                         # write the information of the changed vowel to the list (to write to the log file later)
                         newInfo = [str(wr) for wr in [plot.oldv.id, x.name,x.word,plot.oldv.time,x.time,x.duration,x.stress,x.maxForm,plot.oldv.F1,x.F1,plot.oldv.F2,x.F2]]
                         plot.allLogs[plot.oldv.wFile] += [newInfo]
-                        chooseFormants = False
+                        sett.chooseFormants = False
                         plot.xFormButtons = []
                         writeInfo(x,plot)
-                        plot.praatInfo = []
-                        lastVowel = plot.currentVowel              
-                        vowelChange = True
+                        sett.praatInfo = []
+                        sett.lastVowel = plot.currentVowel              
+                        sett.vowelChange = True
         
-        for b in permButtons[1]: # make a list of which stress types are displayed (0,1,2)
+        for b in sett.permButtons[1]: # make a list of which stress types are displayed (0,1,2)
             if b.caption in ['1','2','0']:
                 if plot.filtered: b.bgcolor = Color("darkolivegreen4")
                 if b.bgcolor == Color("darkolivegreen2"):                            
                     plot.stressFiltered += [b.caption]
 
-        if vowelChange: # if the vowel plot needs to be updated
-            vowList = []
-            if vowelMode == 'intersect': # update displayed as intersect of celex and arpabet vowels
+        if sett.vowelChange: # if the vowel plot needs to be updated
+            sett.vowList = []
+            if sett.vowelMode == 'intersect': # update displayed as intersect of celex and arpabet vowels
                 for v in plot.vowButtons:    
-                        if (v.name in plot.arpDisplayed) and (v.celex in plot.celDisplayed):
-                            vowList += [v] if v not in plot.filtered else []
+                        if (v.name in plot.arpDisplayed) and (v.altVow in plot.altDisplayed):
+                            sett.vowList += [v] if v not in plot.filtered else []
             else: # update displayed as union of celex and arpabet vowels
                 for v in plot.vowButtons:    
-                    if (v.name in plot.arpDisplayed) or (v.celex in plot.celDisplayed):
-                        vowList += [v] if  v not in plot.filtered else []
+                    if (v.name in plot.arpDisplayed) or (v.altVow in plot.altDisplayed):
+                        sett.vowList += [v] if  v not in plot.filtered else []
         
         # only let those with the allowed stress be displayed
-        vowList = [v for v in vowList if v.stress not in plot.stressFiltered]
+        sett.vowList = [v for v in sett.vowList if v.stress not in plot.stressFiltered and v.inPlot(plot)]
         plot.stressFiltered = []
 
-        #### Everything below this is the bit that actually draws to the screen ####
-
-        # draw the vowel plot if it has been updated
-        if vowelChange:
-            plot.display.fill(WHITE)
-            if plot.ellip: # draw confidence ellipse
-                plot.display.blit(plot.ellip[0],plot.ellip[1])
-            plot.display.blit(F1,(plot.width-myfont.size('F1')[0],plot.height/2)) # draw F1 and F2 as axis labels for the plot
-            plot.display.blit(F2,(plot.width/2,10))
-            drawGrid(numFont, plot) # draw the grid on the plot
-            if zoomLines: pygame.draw.lines(plot.display,BLACK,True,zoomLines,1) # draw the box to zoom to/remove vowels from 
-            for b in [v.button for v in vowList]: # draw all vowel tokens to the screen
-                b.draw(plot.display) 
-            vowelChange = False
-        else:  # if it hasn't been updated, update the rest of the screen only
-            for r in NOTPLOTRECTS:
-                pygame.draw.rect(plot.display,WHITE,r)
-
-        pygame.draw.lines(plot.display,BLACK,True, [(490,plot.height),(plot.width,plot.height),(plot.width,840),(490,840)],2) # draw rectangle to display vowel info
-        pygame.draw.lines(plot.display,BLACK,True, [(10,10),(plot.width,10),(plot.width,plot.height),(10,plot.height)],2) # draw rectangle to display vowel buttons
-        tokenNum = myfont.render(str(len(vowList)),1,BLACK) # render and draw the number of tokens currently on the screen 
-        plot.display.blit(tokenNum,(710,820))
-        pygame.draw.lines(plot.display,BLACK,True,[(10,630),(185,630),(185,840),(10,840)],2) # draw the box for the arpabet vowels
-        pygame.draw.lines(plot.display,BLACK,True,[(225,630),(480,630),(480,840),(225,840)],2) #draw the box for the celex vowels 
-        plot.display.blit(celLabel,(320,605)) # draw CELEX 
-        plot.display.blit(arpLabel,(50,605)) # draw ARPABET
-
-        # draw the minimum duration or the removed word if set
-        if (plot.minDur or plot.filtWrd) and plot.filtered:
-            if plot.minDur:
-                filteredCode = ( miniFont.render('Minimum Duration: ',1,BLACK), miniFont.render(str(plot.minDur),1,BLACK) )
-                filtsize = miniFont.size(str(plot.minDur))
-            else:
-                filteredCode = ( miniFont.render('Filtered Word: ',1,BLACK) , miniFont.render(str(plot.filtWrd),1,BLACK) )
-                filtsize = miniFont.size(str(plot.filtWrd))
-            for i,f in enumerate(filteredCode):    
-                plot.display.blit(f,(WINDOWWIDTH-(filtsize[0]+10 if i else 110),WINDOWHEIGHT-50 + i*(filtsize[1]+3)))
+        # draw everything to the screen
+        drawToScreen(sett, plot, NOTPLOTRECTS)
         
-        for b in permDisplay: # draw all buttons
-            b.draw(plot.display)
-        
-        if plot.textList:    # draw info for last vowel scrolled over to screen
-            for i,t in enumerate(plot.textList):
-                label = textListFont.render(t, 1, BLACK)
-                plot.display.blit(label, (500, 605+(21*i)))
-        
-        if chooseFormants: # draw alternate formant buttons (when in choose formant mode)
-            for xf in plot.xFormButtons:
-                xf.button.draw(plot.display)
-        
-        pygame.display.update() # update screen
-        FPSCLOCK.tick(FPS) # screen updates at 10 frames per second (unless FPS set to something else)
+        FPSCLOCK.tick(sett.FPS) # screen updates at 10 frames per second (unless FPS set to something else)
 
 if __name__ == '__main__':
     main()
