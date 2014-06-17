@@ -122,7 +122,7 @@ for l in logs:
 		formList[number][indexes['CHANGED']] = 'Yes' if comment == 'corrected' else formList[number][indexes['CHANGED']]
 		formList[number][indexes['REMOVED']] = 'Yes' if comment != 'corrected' else formList[number][indexes['REMOVED']]
 		formList[number][indexes['ANNOTATOR']] = annotator
-		formList[number][indexes['NOTE']] = ' '.join([c.strip() for c in comment.split()[1:]])
+		formList[number][indexes['NOTE']] = comment 
 
 	## write to new formant.txt file
 	newFile = open(pj(args.c,name[0]+'-formant.txt'),'wb')

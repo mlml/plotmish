@@ -42,7 +42,7 @@ except: print >> sys.stderr, 'can\'t find numpy, will not be able to draw ellips
 
 # parse in arguments from the command line
 parser = argparse.ArgumentParser(description = 'Make blank textgrids for transcription of DR uncut clips')
-parser.add_argument('vowels', metavar = 'vowel info', help = '.plt file or formant.txt file or folder containing many')
+parser.add_argument('vowels', metavar = 'vowel info', help = 'formant.txt file or folder containing many')
 parser.add_argument('wav', metavar = 'wav file', help = '.wav file or folder containing many')
 parser.add_argument('annotator', metavar = 'annotator', help = 'what\'s your name?')
 parser.add_argument('-k', metavar = 'keyword', default = '*', help = 'keyword for selecting files in a directory, default is all files in the directory')
@@ -50,17 +50,16 @@ parser.add_argument('-o', metavar = 'output file', default = 'log', help = 'chan
 parser.add_argument('-a',  action = 'store_true', help = 'append to older log file instead of writing over it')
 parser.add_argument('-p', metavar = 'Praat', default = '/Applications/Praat.app', help = 'change path to Praat application, default is /Applications/Praat.app')
 parser.add_argument('-f0', metavar = 'pitch tracks', default = '', help = 'folder containing pre-generated pitch tracks for each sound file')
-parser.add_argument('-epw', metavar = 'celex dict', default = '', help = 'path to epw.cd celex dictionary file, required for celex mode')
-parser.add_argument('-c', action = 'store_true', help = 'run in celex mode, default is ARPABET mode (requires epw.cd)')
+parser.add_argument('-c',metavar = 'celex dict',  default = '' , help = 'path to epw.cd celex dictionary file, will then run in celex mode, default is ARPABET mode')
 args = parser.parse_args()
 
 # check celex mode has access to celex dict 
 if args.c:
     #set path to epw.cd celex dict 
     try: 
-        mapToCelex.changeCelexPath(args.epw)
+        mapToCelex.changeCelexPath(args.c)
     except:
-        print >> sys.stderr , 'Cannot read %r \nPlease change file path' % args.epw
+        print >> sys.stderr , 'Cannot read %r \nPlease change file path' % args.c
 
 #set window sizes and frames per second
 WINDOWWIDTH = 820
@@ -263,7 +262,7 @@ def primaryCmuPronDict():
             cmuDict[word] = pron
         elif len(pron) > len(cmuDict[word]):
             cmuDict[word] = pron
-        elif len(pron) == len(cmuDict[word]) and len([p for p in pron if 'AH0' == p]) < len([p for p in cmuDict[word] if 'AH0' == p]):
+        elif len(pron) == len(cmuDict[word]) and len([p for p in pron if p in ['AH0', 'IH0']]) < len([p for p in cmuDict[word] if p in ['AH0', 'IH0']]):
             cmuDict[word] = pron
     return cmuDict
 

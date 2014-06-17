@@ -1,12 +1,12 @@
 corrected	/Users/misha/plotmish/corrected/
 annotator	MS2
 output	/Users/misha/plotmish/log
-overwrite	False
+overwrite	True
 formant	/Users/misha/bigbro9uk/data/formants_ep/
 log	/Users/misha/plotmish/log
 keyword	Darnell-2840
 praat	/Applications/Praat.app
 pitch tracks	
-mode	True
+mode	False
 celex dict	/Users/misha/bigbro9uk/data/dictionaries/celex.cd
 wav	/Users/misha/Desktop/epWavs

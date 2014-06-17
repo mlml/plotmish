@@ -1,7 +1,7 @@
 import sys, os, subprocess, glob
 from pygame.locals import *
 
-sys.path.append('plotmish/support_scripts')
+sys.path.append('support_scripts')
 
 import pygame, pygbutton, inputbox
 
@@ -9,13 +9,13 @@ WINDOWWIDTH, WINDOWHEIGHT = 500, 750
 
 captionFont = pygame.font.SysFont('courier',16)
 
-sendpraat = os.path.join(os.getcwd(),'plotmish','support_scripts','sendpraat')
+sendpraat = os.path.join(os.getcwd(),'support_scripts','sendpraat')
 
-getPitch = os.path.join(os.getcwd(),'plotmish','getPitch.praat')
+getPitch = os.path.join(os.getcwd(),'getPitch.praat')
 
-updateFormants = os.path.join(os.getcwd(),'plotmish','updateFormants.py') 
+updateFormants = os.path.join(os.getcwd(),'updateFormants.py') 
 
-plotmish = os.path.join(os.getcwd(), 'plotmish', 'plotmish.py')
+plotmish = os.path.join(os.getcwd(), 'plotmish.py')
 
 FPS = 10
 
@@ -42,7 +42,7 @@ args =	{	'formant' : '',
 			'celex dict': '',
 			'mode': False}
 
-defaultsPath = os.path.join(os.getcwd(),'plotmish','defaults.txt')
+defaultsPath = os.path.join(os.getcwd(),'defaults.txt')
 
 akeys = {0:'formant',1:'wav',2:'keyword', 3:'log',4:'praat',5:'pitch tracks',6:'celex dict', 7:'corrected', 8: 'annotator'}
 
@@ -264,11 +264,11 @@ while True: # main loop
 					if b.caption == 'Start Plotmish':
 						errors = [e for e in checkDefaults() if 'corrected' not in e]
 						if not errors:
-							message = ['python', plotmish, args['formant'], args['wav'],args['annotator'], '-k', args['keyword'], '-o', args['log'], '-p', args['praat'], '-f0', args['pitch tracks'], '-epw', args['celex dict']] 
+							message = ['python', plotmish, args['formant'], args['wav'],args['annotator'], '-k', args['keyword'], '-o', args['log'], '-p', args['praat'], '-f0', args['pitch tracks']] 
 							if not args['overwrite']:
 								message += ['-a']
 							if args['mode']:
-								message += ['-c']
+								message += ['-c', args['celex dict']]
 							subprocess.call(['cd', 'plotmish'])
 							subprocess.call(message)
 							pygame.event.clear()
