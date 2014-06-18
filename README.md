@@ -267,5 +267,20 @@ updateFormants.py :
   		-l, -logs 		plotmish logs change folder containing plotmish correction logs. Can
 					also be a single csv file. Default is log/
  		-c,  -corrected 	change folder to write corrected formant.txt files to, default is corrected/
-					 		
+
+-----------------------------------------------------------------------------------------
+
+Examples:
+
+Plotmish comes with an example formant.txt file so you can test out plotmish before running it on your own 
+files if you wish.  The example is called s0101a-formant.txt and it can be found in the examples/ folder.	 
+
+To run plotmish with this file you must first get the corresponding wav file.  This can be found by downloading the free buckeye natural speech corpus (http://buckeyecorpus.osu.edu/).  The wav file you want should be the first one in the corpus called: s0101a.wav
+
+This file can be run with the default config file.
+
+-----------------------------------------------------------------------------------------
+
+Have fun.
+		
 
