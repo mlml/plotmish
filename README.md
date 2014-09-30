@@ -26,17 +26,18 @@ Currently only works on OSX.
 
 ***
 ## **Author and Acknowledgements**
-**Author:** Misha Schwartz
+**Author** Misha Schwartz
 
-**Code for plotting confidence ellipses adapted from:** Jaime, [stackoverflow.com/questions/20126061/ creating-a-confidence-ellipses-in-a-sccatterplot-using-matplotlib](stackoverflow.com/questions/20126061/ creating-a-confidence-ellipses-in-a-sccatterplot-using-matplotlib)
+**Acknolwedgements**
+Code for plotting confidence ellipses adapted from: Jaime, [stackoverflow.com/questions/20126061/ creating-a-confidence-ellipses-in-a-sccatterplot-using-matplotlib](stackoverflow.com/questions/20126061/ creating-a-confidence-ellipses-in-a-sccatterplot-using-matplotlib)
 
-**Code for inputbox.py adapted from:** Timothy Downs, [http://www.pygame.org/pcr/inputbox/](http://www.pygame.org/pcr/inputbox/)
+Code for inputbox.py adapted from: Timothy Downs, [http://www.pygame.org/pcr/inputbox/](http://www.pygame.org/pcr/inputbox/)
 
-**Code for the name_in_objects_list function in zoomIn.praat adapted from:** Ingrid Rosenfelder, `PlotnikButton.praat` (available with the plotnik 10.3 release at [http://www.ling.upenn.edu/~wlabov/ Plotnik.html](http://www.ling.upenn.edu/~wlabov/ Plotnik.html))
+Code for the `name_in_objects_list` function in `zoomIn.praat` adapted from: Ingrid Rosenfelder, `PlotnikButton.praat` (available with the plotnik 10.3 release at [http://www.ling.upenn.edu/~wlabov/ Plotnik.html](http://www.ling.upenn.edu/~wlabov/ Plotnik.html))
 
-**sendpraat binaries:** Paul Boersma, [http://www.fon.hum.uva.nl/praat/sendpraat.html](http://www.fon.hum.uva.nl/praat/sendpraat.html)
+sendpraat binaries: Paul Boersma, [http://www.fon.hum.uva.nl/praat/sendpraat.html](http://www.fon.hum.uva.nl/praat/sendpraat.html)
 
-**The [CMU pronunciation dictionary](http:// www.speech.cs.cmu.edu/cgi-bin/cmudict)**, adapted from the most recent release
+The [CMU pronunciation dictionary](http:// www.speech.cs.cmu.edu/cgi-bin/cmudict), adapted from the most recent release
 
 Also thanks to Morgan Sonderegger, Thea Knowles and the rest of the McGill MLML team.
 
@@ -209,11 +210,15 @@ Release your mouse click _before_ releasing `control+A` to clear the region.
 To zoom into the plot, click the `Zoom` button so it becomes dark green and then click and drag over the region you want to zoom in to. Click `Reset Zoom` to go back to the whole plot.
 
 ## **Other Buttons**
-Std Dev : display ellipses showing 1, 2, and 3 standard deviations from the mean of the vowels currently displayed on screen
-Save : Save all changes up to this point to the log files
-Undo : Undo most recent change (can be repeated back to the most recent save)
-Check Last : Open most recently changed vowel in Praat (cannot remeasure)
-Resume : Read all previously made (and saved!) changes from the log files and update the plot accordingly
+**Std Dev:** display ellipses showing 1, 2, and 3 standard deviations from the mean of the vowels currently displayed on screen
+
+**Save:** Save all changes up to this point to the log files
+
+**Undo:** Undo most recent change (can be repeated back to the most recent save)
+
+**Check Last:** Open most recently changed vowel in Praat (cannot remeasure)
+
+**Resume:** Read all previously made (must be previously saved!) changes from the log files and update the plot accordingly
 
 ## **Other Files**
 ### `getPitch.Praat`
