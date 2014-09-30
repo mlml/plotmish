@@ -64,6 +64,7 @@ cd to the plotmish folder and run plotmish as:
 python plotmish.py [arguments]
 
 Arguments are:
+
 	positional arguments:
   		vowel info        	formant.txt file or folder containing many
   		wav file          	.wav file or folder containing many
@@ -283,4 +284,122 @@ This file can be run with the default config file.
 
 Have fun.
 		
+
+***NEW READ ME***
+## **Description**
+Plotmish is a python-based formant remeasurement tool. It can be used to correct errors made by automatic formant measurements programs and to annotate the changes.
+
+Plotmish graphically displays vowels based on the first two formant values for easy identification of outliers. Outliers can then be remeasured automatically based on either time or maximum formant values or remeasured manually in Praat.
+
+Plotmish also offers several filtering and vowel identification options that are outlined below.
+
+> Plotmish is inspired by [Plotnik](http://www.ling.upenn.edu/~wlabov/Plotnik.html) (Labov)
+
+***
+## **Requirements**
+[Python](https://www.python.org/download/releases/2.7) (preferably version 2.7)
+
+[Pygame](http://www.pygame.org/download.shtml)
+
+[Sound eXchange (SOX)](http://sox.sourceforge.net/)
+
+[Praat](http://www.praat.org/)
+
+Currently only works on OSX.
+
+***
+## **Author and Acknowledgements**
+**Author:** Misha Schwartz
+
+**Code for plotting confidence ellipses adapted from:** Jaime, [stackoverflow.com/questions/20126061/ creating-a-confidence-ellipses-in-a-sccatterplot-using-matplotlib](stackoverflow.com/questions/20126061/ creating-a-confidence-ellipses-in-a-sccatterplot-using-matplotlib)
+
+**Code for inputbox.py adapted from:** Timothy Downs, [http://www.pygame.org/pcr/inputbox/](http://www.pygame.org/pcr/inputbox/)
+
+**Code for the name_in_objects_list function in zoomIn.praat adapted from:** Ingrid Rosenfelder, `PlotnikButton.praat` (available with the plotnik 10.3 release at [http://www.ling.upenn.edu/~wlabov/ Plotnik.html](http://www.ling.upenn.edu/~wlabov/ Plotnik.html))
+
+**sendpraat binaries:** Paul Boersma, [http://www.fon.hum.uva.nl/praat/sendpraat.html](http://www.fon.hum.uva.nl/praat/sendpraat.html)
+
+**The [CMU pronunciation dictionary](http:// www.speech.cs.cmu.edu/cgi-bin/cmudict)**, adapted from the most recent release
+
+Also thanks to Morgan Sonderegger, Thea Knowles and the rest of the McGill MLML team.
+
+***
+# **Running Plotmish**
+Plotmish can either be run directly from the command line or using the start up GUI `start_plotmish.py`. Both are good options but `start_plotmish.py` is nice because you can save default settings and run the helper scripts `updateFormants.py` and `getPitch.Praat` directly from there.
+
+## **From the command line**
+cd to the plotmish folder and run plotmish as:
+
+python plotmish.py [arguments]
+### **Command Line Arguments**
+
+	positional arguments:
+  		vowel info        	formant.txt file or folder
+  		wav file          	.wav file or folder
+  		annotator         	what's your name?
+
+	optional arguments:
+  		-h, --help        	show help message and exit
+  		-k 		        	keyword for selecting files in a directory, default is all files in the directory
+  		-o 		    	change folder to write log files to, default is plotmish/logs
+  		-a                	append to older log file instead of writing over it
+  		-p 	         	change path to Praat application, default is /Applications/Praat.app
+  		-f0 		 	folder containing pre-generated pitch tracks for each sound file
+  		-c                	path to epw.cd celex dictionary file, will then run in celex mode, default is 
+					ARPABET mode
+
+### **Command Line Input Files**
+Vowel info files should be tab delimited text files named something that ends in _**-formant.txt**_ `(ex: example_ _file-formant.txt)`.
+
+There should be a row with column headings that correspond to the headings in the _**config.txt file**_. The formant.txt files can have anything written above the headings row.
+
+See the config.txt file for the required and optional columns in the formant.txt file and the example files in the examples/ folder.
+
+> If you want to name a column something other than the default column headings you can do this by changing the heading names in the config.txt file. For example, if you want the column containing the arpabet pronunciation of the vowel to be called 'arpVow' you should change the first line in the config.txt file from:
+
+
+> ARPABET : vowel # arpabet vowel token (with or without stress)
+
+> to
+
+> ARPABET : arpVow # arpabet vowel token (with or without stress)
+
+For further details on the required and optional columns in the formant.txt files see the comments (everything to the right of the #) in the config.txt files
+
+The default config.txt file is configured to use the output of FAVE-extract (faav.something.com). If using the output of FAVE-extract, add the line:
+
+`candidates=T`
+
+to the config file in the FAVE-extract main directory in order to get all of the alternate measurements.
+
+#### **Naming Input Files**
+The wav files should be .wav configured sound files that correspond to the formant.txt files. They should be named the same as
+the -formant.txt files.
+
+For example, two corresponding files should be named:
+
+`example_file-formant.txt` and `example_file.wav`
+
+#### **Pitch Tracks**
+Pitch tracks are pitch files generated using Praat that correspond to the wav files.
+
+The pitch track for `example_file.wav` should be called `example_file.Pitch`. Pitch tracks for your wav files can be automatically generated by running `getPitch.Praat` or by clicking the 'Make Pitch Tracks' button in `start_plotmish.py`.
+
+The location of these files should be specified with the -f0 flag on start up or by writing it in the 'Pitch Tracks' line in `start_plotmish.py`.
+
+Pitch tracks are optional and are not required to run plotmish.
+
+### **Other Arguments**
+
+	annotator 	:	who is annotating the file (made mandatory to encourage good practice)
+	-k		: 	specify a keyword to filter the files to use.  For example: using the keyword 'day10' will only
+				run files with that string in the basename.
+	-o		:	all changes are written to log files saved in the folder specified here (default is log/)
+	-a		: 	append to the currently saved log files instead of writing over them
+	-p		:	specify the location of Praat (default is /Applications/Praat.app
+	-c		: 	specify the epw.cd celex dictionary if you want to run in Celex mode (see below) 
+
+# **Modes**
+
+
 
