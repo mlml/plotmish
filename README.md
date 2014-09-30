@@ -156,26 +156,26 @@ Vowels can be remeasured in 3 different ways: in praat, by duration and by maxim
 
 You can change which type by clicking this button. When a the Praat option is selected, clicking a vowel will open up that vowel in Praat. You can then change the settings in Praat and move the cursor as you see fit.
 
-### **To make a RemeasureP measurement,**
+### **To make a RemeasureP measurement**
 click: `Query > Log 1 (F12)` and plotmish will draw a black vowel on the screen with those measurements. You can make multiple remeasurements in Praat.
 
 Then go back to plotmish and click on the remeasured vowel you would like to change to. You can always select the original vowel (in white with a coloured border) as well.
 
-### **To make a Remeasure% measurement,**
+### **To make a Remeasure% measurement**
 clicking on a vowel will show 5 new vowels (in black) measured at 20%, 35%, 50%, 65%, 80% of the vowel's duration. Click on the remeasured vowel you would like to select.
 
-### **To make a RemeasureF measurement,**
+### **To make a RemeasureF measurement**
 clicking on a vowel will show the vowel measured at the same time but with a maximum formant setting of 3, 4, 5, and 6 respectively. Once again, click on the desired vowel to change it. At any time with any remeasurement option, you can clickcancel to stop remeasuring.
 
 ## **Filtering Vowels**
 Plotmish provides the option to filter vowels based on minimum duration and word orthography.
 
-### **To filter vowels based on minimum duration,**
+### **To filter vowels based on minimum duration**
 click the `Dur. Filter` button and then type in the minimum duration in milliseconds you want to display to the screen. This will remove all vowels that are currently displayed to the screen that have a duration of less than the specified amount.
 
 Note that this will not remove the vowels, to remove them completely, click the button again which should now be called `Rmv.Dur.Filt` and they will be removed permanently. If you choose not to remove the vowels they can be redisplayed by clicking any vowel button or `Show All`.
 
-### **To filter based on word orthography,**
+### **To filter based on word orthography**
 use the same process as filtering based on minimum duration except click the button `Wrd.Filter` and then type the word you want to filter (not case sensitive).
 
 If a vowel occurs in the specified word then the vowel is filtered.
@@ -191,35 +191,47 @@ _Note: '1' = primary stress , '2' = secondary stress, '0' = no stress_
 ## **Removing a Vowel**
 It is often quite useful to remove a vowel entirely from the screen. This can be done for several reasons. If no remeasurements for a given vowel is acceptable it can be removed as a 'Bad' vowel. Also, if a vowel does not require remeasurement or has been remeasured and now is ok, it can also be removed so as to reduce clutter on the vowel plot.
 
-### **To remove a vowel,** first make sure you set the correct reason for removal by clicking the button `'Rmv. OK'`/`'Rmv. Bad'` button. (As you might expect you want it to say OK if you removing good vowels and Bad if you're removing bad vowels).
+### **To remove a vowel**
+First, make sure you set the correct reason for removal by clicking the button `'Rmv. OK'`/`'Rmv. Bad'` button. (As you might expect you want it to say OK if you removing good vowels and Bad if you're removing bad vowels).
 
-**Then, click on a vowel while holding down the control button.**
+Then, click on a vowel while holding down the control button.
 
-#### **To remove a vowel and leave a note,** as to why it is being removed hold down `control+shift`.
+#### **To remove a vowel and leave a note**
+This allows you to enter a reason why the vowel is being removed.
+Hold down `control+shift`and a text entry box will appear.
 
-#### **To remove a group of vowels at once,** also hold down the `A` key and click and drag over the region you want to remove. Release your mouse click _before_ releasing `control+A` to clear the region.
+#### **To remove a group of vowels at once**
+Hold down the `A` key and click and drag over the region you want to remove.
+Release your mouse click _before_ releasing `control+A` to clear the region.
+`control+shift+A` allows an annotator to leave a note for an entire region.
 
 ## **Zooming**
-To zoom into the plot click the `Zoom` button so it becomes dark green and then click and drag over the region you want to zoom in to. Click `Reset Zoom` to go back to the whole plot.
+To zoom into the plot, click the `Zoom` button so it becomes dark green and then click and drag over the region you want to zoom in to. Click `Reset Zoom` to go back to the whole plot.
 
 ## **Other Buttons**
-### Std Dev : display ellipses showing 1, 2, and 3 standard deviations from the mean of the vowels currently displayed on screen
-### Save : Save all changes up to this point to the log files
-### Undo : Undo most recent change (can be repeated back to the most recent save)
-### Check Last : Open most recently changed vowel in Praat (cannot remeasure)
-### Resume : Read all previously made (and saved!) changes from the log files and update the plot accordingly
+Std Dev : display ellipses showing 1, 2, and 3 standard deviations from the mean of the vowels currently displayed on screen
+Save : Save all changes up to this point to the log files
+Undo : Undo most recent change (can be repeated back to the most recent save)
+Check Last : Open most recently changed vowel in Praat (cannot remeasure)
+Resume : Read all previously made (and saved!) changes from the log files and update the plot accordingly
 
 ## **Other Files**
-### `getPitch.Praat`: generates pitch tracks for wav files (see section on **Running PLotmish: Pitch Tracks** above)
-### `updateFormants.py`: writes new formant.txt files with changes in log files taken into account.
+### `getPitch.Praat`
+generates pitch tracks for wav files (see section on **Running PLotmish: Pitch Tracks** above)
+### `updateFormants.py`
+writes new formant.txt files with changes in log files taken into account.
 
-> Can either be run by clicking the `Update Formants` button in `start_plotmish.py` or on the command line with the following arguments:
-	formant_files         		directory containing formant.txt files or a single formant.txt file to be corrected
+Can either be run by clicking the `Update Formants` button in `start_plotmish.py` or on the command line with the following arguments:
+
+	formant_files         	directory containing formant.txt files or a single formant.txt file to be corrected
+	
 	optional arguments:
-	-h, --help           		show this help message and exit
-	-l, -logs       		plotmish logs change folder containing plotmish correction logs. Can also be a single csv
-					file. Default is log.     
-	-c,  -corrected     		change folder to write corrected formant.txt files to, default is corrected/ 
+	-h, --help           	show this help message and exit
+	-l, -logs       	plotmish logs change folder containing plotmish correction logs.
+                                Can also be a single csv file.
+                                Default is log.     
+	-c,  -corrected     	change folder to write corrected formant.txt files to, default is corrected/ 
+	
 	
 # **Examples**
 Plotmish comes with an example formant.txt file so you can test out plotmish before running it on your own files if you wish. The example is called s0101a-formant.txt and it can be found in the examples/ folder.
@@ -231,7 +243,6 @@ The wav file you want should be the first one in the corpus called: s0101a.wav
 This file can be run with the default config file.
 
 # **Have fun.**
-
 
 
 
