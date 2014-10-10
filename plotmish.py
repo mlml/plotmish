@@ -624,7 +624,7 @@ def updateDisplayed(displayed, button, plot):
 
 def writeInfo(v, plot):
     # update textlist to write to the info square (lower right)
-    plot.textList = ['vowel: '+v.name,('celex: ' if args.c else 'unreduced: ')+v.altVow,'F1: '+str(v.F1),
+    plot.textList = [('vowel: ' if args.c else 'arpabet: ')+v.name,('celex: ' if args.c else 'unreduced: ')+v.altVow,'F1: '+str(v.F1),
              'F2: '+str(v.F2),'stress: '+v.stress,
              'duration: '+v.duration+' ms','word: '+v.word,
              'time: '+v.time,'environ.: '+v.pPhone+' v '+v.fPhone,
