@@ -27,7 +27,7 @@ www.pygame.org/
 by: Misha Schwartz
 '''
 
-import pygame, sys, argparse, os, re, csv, math, copy
+import pygame, sys, argparse, os, re, csv, math, copy, time
 from os.path import isdir, isfile, join, basename
 from glob import glob
 from subprocess import call, Popen
@@ -60,6 +60,18 @@ if args.c:
         mapToCelex.changeCelexPath(args.c)
     except:
         print >> sys.stderr , 'Cannot read %r \nPlease change file path' % args.c
+
+#make new save file for celex prons if it doesn't already
+#exist otherwise read from the save File:
+celStore = join('support_scripts','celexStore.txt')
+
+
+if isfile(celStore):
+    saveDict = mapToCelex.readSaved(celStore)
+else:
+    mapToCelex.newSaveFile(celStore)
+
+
 
 #set window sizes and frames per second
 WINDOWWIDTH = 820
@@ -197,11 +209,12 @@ def getCelexVowel(word,cmu,vIndex):
     allIndexes = [i for i,c in enumerate(cmu) if c[:-1] in arpVowels]
     vIndex = allIndexes.index(vIndex)
     try:
-        celVowel = mapToCelex.mapToCelex(word,cmu)[vIndex][1][0]
-    except: 
-        celVowel = 'NA'
-    return celVowel
-
+        return saveDict[(word,''.join(cmu))][vIndex][1][0]
+    except:
+        try:
+            return mapToCelex.mapToCelex(word,cmu, makeSave = True)[vIndex][1][0]
+        except:
+            return ''
 # place to write last file and frame checked
 # when iterating over the pitch files
 oldPitchFile = None
@@ -239,13 +252,14 @@ def getPitch(pitchList, timestamp, thisPitch):
 
 def assignMaxMin(plot, allvowels):
     # get maxMin value for plot
-    for a in allvowels:
-        plot.maxF1 = max([float(a.F1) for a in allvowels])
-        plot.minF1 = min([float(a.F1) for a in allvowels])
-        plot.maxF2 = max([float(a.F2) for a in allvowels])
-        plot.minF2 = min([float(a.F2) for a in allvowels])
+    tt = time.time()
+    plot.maxF1 = max([float(a.F1) for a in allvowels])
+    plot.minF1 = min([float(a.F1) for a in allvowels])
+    plot.maxF2 = max([float(a.F2) for a in allvowels])
+    plot.minF2 = min([float(a.F2) for a in allvowels])
     plot.maxMin = (plot.minF1, plot.minF2, plot.maxF1, plot.maxF2)
     plot.defaultMaxMin = (plot.minF1, plot.minF2, plot.maxF1, plot.maxF2)
+    print time.time()-tt
 
 def primaryCmuPronDict():
     # make a dictionary with the primary pronunciation for all
@@ -384,10 +398,12 @@ def getVowels(plot, sett):
                             nV.alreadyCorrected = (line[5], line[8], line[10], line[12])
             allvowels += [nV]
     
+    # save all translated words for future easy access
+    mapToCelex.writeSaved(celStore) 
     assignMaxMin(plot, allvowels)
-
     for av in allvowels:
         av.button = makeVowelButton(av, plot)
+    
     return allvowels
 
 
@@ -608,7 +624,7 @@ def updateDisplayed(displayed, button, plot):
 
 def writeInfo(v, plot):
     # update textlist to write to the info square (lower right)
-    plot.textList = ['vowel: '+v.name,'celex: '+v.altVow,'F1: '+str(v.F1),
+    plot.textList = ['vowel: '+v.name,('celex: ' if args.c else 'unreduced: ')+v.altVow,'F1: '+str(v.F1),
              'F2: '+str(v.F2),'stress: '+v.stress,
              'duration: '+v.duration+' ms','word: '+v.word,
              'time: '+v.time,'environ.: '+v.pPhone+' v '+v.fPhone,
@@ -847,6 +863,7 @@ def drawToScreen(sett, plot, NOTPLOTRECTS):
     
     pygame.display.update() # update screen
 
+
 def main():
     # this is where the magic happens
     #initialize pygame surfaces and clocks
@@ -862,8 +879,7 @@ def main():
     sett = plotmishClasses.Settings()
     initializeSettings(sett, plot)
     # remove praatlog if it exists (it shouldn't but just in case)
-    call(['rm', sett.praatLog])
-
+    call(['rm', sett.praatLog]) 
     while True: # main loop
         ## this is the exciting bit
         for event in pygame.event.get(): # event handling loop

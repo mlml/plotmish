@@ -1,6 +1,8 @@
 #takes tuple of (word, cmu pronunciation) and maps the vowels
 #to their equivalent in the celex pronunciation
-import argparse, os, re, sys
+#If run with saveFile argument it saves word to word pronuciations
+#in a text file for quicker retrieval later on  
+import os, re, sys,  time
 from os import path
 '''
 cmuVowels = ['IY', 'IA', 'N~', 'L~', 'NG~', 'AA', 'AE', 'EH', 'AH',
@@ -19,7 +21,10 @@ for c in translate.values():
 
 celexPath = path.join(os.getcwd(),'celex.cd')
 
+saveDict = {}
+
 celDict = {}
+
 def buildCelex():   
     global celDict, celexPath
     cel = open(celexPath,'rb').readlines()
@@ -51,8 +56,6 @@ def weight(cmu,cel):
     else: 
         return 'vowel'
 
-
-
 def dealWithHiatus(match):
     newMatches = []
     if len(match[0]) == len(match[1]):
@@ -63,9 +66,7 @@ def dealWithHiatus(match):
     if newMatches:
         return newMatches
     return [match]
-
-
-
+deads = {}
 def mapVowels(cmu,cel):
     cmu += ['']
     cel += ['']
@@ -84,9 +85,11 @@ def mapVowels(cmu,cel):
                 break
     vowelInd_cmu = [-1]+[cmu.index(v) for v in cmu if v not in cmuCons] 
     vowelInd_cel = [-1]+[cel.index(v) for v in cel if v not in translate.keys()]
+    mapping = [m for m in vowMatch if m[0]]
     mapping = filter(lambda a: a != ([],[]), vowMatch)
     
-    if len(vowelInd_cmu)-1 != len(mapping): 
+    if len(vowelInd_cmu)-1 != len(mapping) and len(vowelInd_cel)-1 != len(mapping):
+        deads[mapping] = ''
         newCmu, newCel = list(cmu),list(cel)
         shorter = min(len(vowelInd_cel), len(vowelInd_cmu))
         for s in range(1,shorter):
@@ -96,17 +99,49 @@ def mapVowels(cmu,cel):
                 for d in range(vowelInd_cel[s-1]+1,vowelInd_cel[s]):
                     newCel.remove(cel[d])
         return mapVowels(newCmu[:-1],newCel[:-1])
+    
+
     return mapping                    
                                 
 
-def mapToCelex(word, pron):
-    global celDict
+def readSaved(saveFile):
+    global saveDict 
+    assert os.path.isfile(saveFile), 'file does not exist %r' %saveFile
+    sF = open(saveFile, 'rb')
+    saveDict = {(s[0],s[1]) : [tuple(w.split() for w in y.split('/')) if ' ' in y else tuple(y.split('/')) for y in s[2].split('//')] for s in [x.strip('\n').split('  ') for x in sF.readlines()]}
+    sF.close()
+    return saveDict
+
+def writeSaved(saveFile):
+    saveF = open(saveFile, 'a')
+    for w,p in saveDict.items():
+        for e in range(len(p)):
+            if isinstance(p[e][0],list):
+                p[e] = '/'.join([' '.join(i) for i in p[e]])
+            else:
+                p[e] = '/'.join(p[e])
+        p = '//'.join(p)
+        saveF.write(w[0]+'  '+str(w[1])+'  '+p+'\n')
+    saveF.close()
+
+def newSaveFile(saveFile):
+    saveF = open(saveFile, 'wb')
+    saveF.close()
+
+def mapToCelex(word, pron, makeSave = False):
+    global celDict, saveDict
     if not celDict:
         buildCelex()
     word = word.upper()
-    assert word in celDict.keys(), '%r not in celex' % word 
+    if word not in celDict:
+        if makeSave: 
+            saveDict[(word,''.join(pron))] = ''
+        return ''
     celPron = celDict[word]
-    return mapVowels(pron,celPron[0])
+    mapped = mapVowels(pron,celPron[0])
+    if makeSave: 
+        saveDict[(word,''.join(pron))] = mapped 
+    return mapped
 
 
 
