@@ -1,0 +1,28 @@
+signal s0103.wav.fspec
+type 0
+comment created using xlabel Fri May  5 16:03:55 2006
+comment created using xlabel Wed Oct 19 13:17:16 2005
+color 115
+font -misc-*-bold-*-*-*-15-*-*-*-*-*-*-*
+separator ;
+nfields 1
+#
+   25.165333  115 <voiceless-vowel>
+   37.619600  115 <IVER_overlap-start>
+   37.818111  115 <IVER_overlap-end>
+   60.065367  115 <voiceless-vowel>
+   64.110996  115 <voiceless-vowel>
+   76.195280  115 <voiceless-vowel>
+  140.208288  115 <voiceless-vowel>
+  155.479370  115 <voiceless-vowel>
+  163.272138  115 <voiceless-vowel>
+  186.770322  115 <voiceless-vowel>
+  244.504594  115 <IVER_overlap-start>
+  244.868643  115 <IVER_overlap-end>
+  259.462152  115 <IVER_overlap-start>
+  259.764903  115 <IVER_overlap-end>
+  260.838296  115 <IVER_overlap-start>
+  261.131874  115 <IVER_overlap-end>
+  292.859924  115 <IVER_overlap-start>
+  294.172595  115 <IVER_overlap-end>
+  358.149096  115 <voiceless-vowel>
