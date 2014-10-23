@@ -222,7 +222,7 @@ To zoom into the plot, click the `Zoom` button so it becomes dark green and then
 
 ## **Other Files**
 ### `getPitch.Praat`
-generates pitch tracks for wav files (see section on **Running PLotmish: Pitch Tracks** above)
+generates pitch tracks for wav files (see section on **Running Plotmish: Pitch Tracks** above)
 ### `updateFormants.py`
 writes new formant.txt files with changes in log files taken into account.
 

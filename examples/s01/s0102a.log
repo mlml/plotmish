@@ -1,0 +1,97 @@
+signal s0102.sd
+type 0
+comment created using xlabel Wed Apr 19 17:21:19 2006
+comment created using xlabel Thu Apr  4 15:45:36 2002
+color 122
+font -misc-*-bold-*-*-*-15-*-*-*-*-*-*-*
+separator ;
+nfields 1
+#
+   22.598683  122 <CONF=L>
+   33.988780  122 <IVER_overlap-start>
+   34.037969  122 <CONF=L>
+   34.478796  122 <IVER_overlap-end>
+   38.045688  122 <IVER_overlap-start>
+   38.236076  122 <IVER_overlap-end>
+   38.338541  122 <CONF=L>
+   54.982566  122 <voiceless-vowel>
+   66.223353  122 <IVER_overlap-start>
+   66.528142  122 <IVER_overlap-end>
+   66.962639  122 <VOICE=modal>
+   68.228782  122 <VOICE=whisper>
+   82.927163  122 <IVER_overlap-start>
+   83.063925  122 <IVER_overlap-end>
+  108.204392  122 <voiceless-vowel>
+  115.235594  122 <voiceless-vowel>
+  123.755675  122 <VOICE=modal>
+  124.172368  122 <VOICE=creaky>
+  128.777413  122 <voiceless-vowel>
+  140.024080  122 <voiceless-vowel>
+  146.078358  122 <voiceless-vowel>
+  146.771296  122 <voiceless-vowel>
+  149.750811  122 <voiceless-vowel>
+  152.514063  122 <voiceless-vowel>
+  154.415325  122 <voiceless-vowel>
+  154.632145  122 <voiceless-vowel>
+  164.843850  122 <IVER_overlap-start>
+  166.245462  122 <IVER_overlap-end>
+  200.176648  122 <CONF=L>
+  200.201993  122 <CONF=L>
+  200.838133  122 <voiceless-vowel>
+  202.710239  122 <CONF=L>
+  208.051139  122 <voiceless-vowel>
+  218.922555  122 <VOICE=modal>
+  219.179070  122 <VOICE=creaky>
+  220.370272  122 <VOICE=modal>
+  220.674627  122 <VOICE=creaky>
+  222.852245  122 <CONF=L>
+  223.779649  122 <IVER_overlap-start>
+  224.033997  122 <IVER_overlap-end>
+  232.602214  122 <CONF=M>
+  234.434614  122 <CONF=L>
+  234.808104  122 <VOICE=modal>
+  235.520001  122 <VOICE=whisper>
+  236.790227  122 <VOICE=modal>
+  237.026172  122 <VOICE=creaky>
+  253.699399  122 <VOICE=modal>
+  254.413702  122 <VOICE=creaky>
+  270.585233  122 <voiceless-vowel>
+  283.838947  122 <VOICE=modal>
+  284.852342  122 <VOICE=whisper>
+  337.190149  122 <CONF=L>
+  343.933488  122 <voiceless-vowel>
+  358.675496  122 <VOICE=modal>
+  359.149597  122 <VOICE=breathy>
+  374.512258  122 <VOICE=modal>
+  375.616271  122 <VOICE=breathy>
+  383.456173  122 <VOICE=modal>
+  383.849344  122 <VOICE=breathy>
+  411.139421  122 <voiceless-vowel>
+  411.265935  122 <VOICE=modal>
+  411.367126  122 <VOICE=creaky>
+  428.469397  122 <VOICE=modal>
+  428.760492  122 <VOICE=whisper>
+  433.327212  122 <voiceless-vowel>
+  438.970454  122 <VOICE=modal>
+  439.185745  122 <VOICE=creaky>
+  449.445825  122 <voiceless-vowel>
+  457.891458  122 <VOICE=modal>
+  458.356264  122 <VOICE=whisper>
+  475.317676  122 <voiceless-vowel>
+  490.636140  122 <VOICE=modal>
+  491.137980  122 <VOICE=breathy>
+  496.502128  122 <VOICE=modal>
+  496.926495  122 <VOICE=creaky>
+  512.684648  122 <VOICE=modal>
+  513.209563  122 <VOICE=breathy>
+  530.008503  122 <IVER_overlap-start>
+  530.961519  122 <IVER_overlap-end>
+  534.949581  122 <VOICE=modal>
+  535.499122  122 <VOICE=creaky>
+  543.635910  122 <voiceless-vowel>
+  552.190476  122 <IVER_overlap-start>
+  552.437031  122 <IVER_overlap-end>
+  560.095011  122 <VOICE=modal>
+  560.287099  122 <VOICE=creaky>
+  568.806661  122 <voiceless-vowel>
+  570.331658  122 <voiceless-vowel>
