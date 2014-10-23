@@ -74,8 +74,9 @@ else:
 
 
 #set window sizes and frames per second
-WINDOWWIDTH = 820
-WINDOWHEIGHT = 850
+startWidth, startHeight = 820.0,850.0 #useful for defining location of objects when resizing
+WINDOWWIDTH = int(startWidth)
+WINDOWHEIGHT = int(startHeight)
 
 
 
@@ -85,6 +86,7 @@ numFont = pygame.font.SysFont('helvetica',15)
 miniFont = pygame.font.SysFont('helvetica',12)
 textListFont = pygame.font.SysFont('courier',18)
 smallButtonFont = pygame.font.SysFont('courier', 16)
+boldButtonFont = pygame.font.SysFont('courier', 16, bold = True)
 
 #pressed button lists
 ctrl = [K_RCTRL, K_LCTRL] 
@@ -189,18 +191,20 @@ def getFiles(sett):
 
 def calculateVowelLocation(f, plot):
     # calculates the location to display the vowel based on tuple of (F1,F2)    
-    x = (((plot.maxMin[3]-float(f[1])))/(plot.maxMin[3]-plot.maxMin[1]))*(plot.width-20)+15 
-    y = ((float(f[0]) - plot.maxMin[0])/(plot.maxMin[2]-plot.maxMin[0]))*(plot.height-20)+15
+    wOffsetBig, wOffsetSmall = relativeSizing([20,15])
+    hOffsetBig, hOffsetSmall = relativeSizing([20,15], 'h')
+    x = (((plot.maxMin[3]-float(f[1])))/(plot.maxMin[3]-plot.maxMin[1]))*(plot.width - wOffsetBig)+wOffsetSmall 
+    y = ((float(f[0]) - plot.maxMin[0])/(plot.maxMin[2]-plot.maxMin[0]))*(plot.height - hOffsetBig)+hOffsetSmall
     return (x,y)
 
-def makeVowelButton(v, plot):
+def makeVowelButton(v, plot, settings = {'w':8, 'h':8, 'bgcol':'new', 'fgcol':'new'}):
     # makes a new vowel button for each new vowel
     x,y = calculateVowelLocation((v.F1,v.F2), plot)
-    buttonRect = pygame.Rect(x,y, 8, 8)
+    buttonRect = pygame.Rect(x,y, settings['w'], settings['h'])
     buttonRect.center = (x,y)
     button = pygbutton.PygButton(buttonRect,'►'.decode('utf8'),border = False)
-    button.bgcolor = colours[v.name] 
-    button.fgcolor = colours[v.name]
+    button.bgcolor = colours[v.name] if settings['bgcol'] == 'new' else settings['bgcol']
+    button.fgcolor = colours[v.name] if settings['fgcol'] == 'new' else settings['fgcol']
     return button
 
 def getCelexVowel(word,cmu,vIndex):
@@ -252,14 +256,12 @@ def getPitch(pitchList, timestamp, thisPitch):
 
 def assignMaxMin(plot, allvowels):
     # get maxMin value for plot
-    tt = time.time()
     plot.maxF1 = max([float(a.F1) for a in allvowels])
     plot.minF1 = min([float(a.F1) for a in allvowels])
     plot.maxF2 = max([float(a.F2) for a in allvowels])
     plot.minF2 = min([float(a.F2) for a in allvowels])
     plot.maxMin = (plot.minF1, plot.minF2, plot.maxF1, plot.maxF2)
     plot.defaultMaxMin = (plot.minF1, plot.minF2, plot.maxF1, plot.maxF2)
-    print time.time()-tt
 
 def primaryCmuPronDict():
     # make a dictionary with the primary pronunciation for all
@@ -431,8 +433,16 @@ def confidenceEllipse(xyPoints,sdev,plot):
     img_rect.center = mean
     plot.ellip = (rot_img, img_rect)
 
+def relativeSizing(valList, orientation = 'w'):
+    #returns relative size for button location and sizes
+    #when resizing screen (orientation is either 'height' or 'width')
+    if isinstance(valList, int): #so that you can pass a single int instead of as a list
+        v = valList
+        return (v/startWidth)*WINDOWWIDTH if orientation == 'w' else (v/startHeight)*WINDOWHEIGHT
+    
+    return [(v/startWidth)*WINDOWWIDTH if orientation == 'w' else (v/startHeight)*WINDOWHEIGHT for v in valList]
 
-def makeButtons():
+def makeButtons(oldButtons = {}):
     # make permanent buttons (on the bottom of the screen)
     vowButtons = []
     onOffButtons = []
@@ -440,76 +450,120 @@ def makeButtons():
     #arpabet vowels
     # front
     frontArp = ['IY', 'IH', 'EY', 'EH', 'AE']
+    x, w  = relativeSizing([20,30]) #get relative placement of x position and width of button
+    y, h, sp = relativeSizing([640,30,35], 'h') #get relative placement of y position, height and spacing between buttons
     for i,c in enumerate(frontArp):
-        button = pygbutton.PygButton((20, 640+(i*35), 30, 30), c)
-        button.bgcolor = colours[c]
+        button = pygbutton.PygButton((x, y+(i*sp), w, h), c)
+        button.bgcolor = colours[c] if c not in oldButtons else oldButtons[c].bgcolor
+        button.font = smallButtonFont if c not in oldButtons else oldButtons[c].font 
         vowButtons.append(button)
     # central
-    button = pygbutton.PygButton((60, 710, 30, 30), 'AH')
-    button.bgcolor = colours['AH']
+    x = relativeSizing(60) 
+    y = relativeSizing(710, 'h')
+    button = pygbutton.PygButton((x, y, w, h), 'AH')
+    button.bgcolor = colours['AH'] if c not in oldButtons else oldButtons['AH'].bgcolor
+    button.font = smallButtonFont if 'AH' not in oldButtons else oldButtons['AH'].font
     vowButtons.append(button)
     # back
     backArp = ['UW', 'UH', 'OW', 'AO', 'AA']
+    x = relativeSizing(100) 
+    y = relativeSizing(640, 'h')
     for i,c in enumerate(backArp):
-        button = pygbutton.PygButton((100, 640+(i*35), 30, 30), c)
-        button.bgcolor = colours[c]
+        button = pygbutton.PygButton((x, y+(i*sp), w, h), c)
+        button.bgcolor = colours[c] if c not in oldButtons else oldButtons[c].bgcolor
+        button.font = smallButtonFont if c not in oldButtons else oldButtons[c].font
         vowButtons.append(button)
     # diphthongs and rhoticized
     diphArp = ['AY','OY', 'AW', 'IW', 'ER']
+    x = relativeSizing(140) 
     for i,c in enumerate(diphArp):
-        button = pygbutton.PygButton((140, 640+(i*35), 30, 30), c)
-        button.bgcolor = colours[c]
+        button = pygbutton.PygButton((x, y+(i*sp), w, h), c)
+        button.bgcolor = colours[c] if c not in oldButtons else oldButtons[c].bgcolor
+        button.font = smallButtonFont if c not in oldButtons else oldButtons[c].font        
         vowButtons.append(button)
     # celex vowels
     # front
+    x = relativeSizing(255) 
+    y, sp = relativeSizing([640,40], 'h')
     for i,c in enumerate(['i','I','1','E','{'] if args.c else frontArp):
-        button = pygbutton.PygButton((255, 640+(i*40), 30, 30), c)
-        button.bgcolor = Color("lightskyblue") if args.c else colours[c]
+        button = pygbutton.PygButton((x, y+(i*sp), w, h), c)
+        button.font = smallButtonFont if c not in oldButtons else oldButtons[c].font
+        if args.c: button.bgcolor = Color("lightskyblue")
+        else:  button.bgcolor = colours[c] if c not in oldButtons else oldButtons[c].bgcolor
         altVowButtons.append(button)
     # central
+    x = relativeSizing(295) 
     if args.c:
         for i,c in enumerate(['@','3','V','Q']):
-            button = pygbutton.PygButton((295, 640+(i*40), 30, 30), c)
-            button.bgcolor = Color("lightskyblue")
+            button = pygbutton.PygButton((x, y+(i*sp), w, h), c)
+            button.font = smallButtonFont if c not in oldButtons else oldButtons[c].font
+            if args.c: button.bgcolor = Color("lightskyblue")
+            else:  button.bgcolor = colours[c] if c not in oldButtons else oldButtons[c].bgcolor
             altVowButtons.append(button)
-    else:
-        button = pygbutton.PygButton((295, 710, 30, 30), 'AH')
-        button.bgcolor = colours['AH']
+    else: 
+        y = relativeSizing(710, 'h')
+        button = pygbutton.PygButton((x, y, w, h), 'AH')
+        button.font = smallButtonFont if 'AH' not in oldButtons else oldButtons['AH'].font
+        if args.c: button.bgcolor = Color("lightskyblue")
+        else:  button.bgcolor = colours['AH'] if 'AH' not in oldButtons else oldButtons['AH'].bgcolor
         altVowButtons.append(button)
     # back
+    x = relativeSizing(335) 
+    y = relativeSizing(640, 'h')
     for i,c in enumerate(['u','U','5','$','#'] if args.c else backArp):
-        button = pygbutton.PygButton((335, 640+(i*40), 30, 30), c)
-        button.bgcolor = Color("lightskyblue") if args.c else colours[c]
+        button = pygbutton.PygButton((x, y+(i*sp), w, h), c)
+        button.font = smallButtonFont if c not in oldButtons else oldButtons[c].font
+        if args.c: button.bgcolor = Color("lightskyblue")
+        else:  button.bgcolor = colours[c] if c not in oldButtons else oldButtons[c].bgcolor
         altVowButtons.append(button)
     #diphthongs
+    x = relativeSizing(375) 
     for i,c in enumerate(['2','4','6'] if args.c else diphArp):
-        button = pygbutton.PygButton((375, 640+(i*40), 30, 30), c)
-        button.bgcolor = Color("lightgreen") if args.c else colours[c]
+        button = pygbutton.PygButton((x, y+(i*sp), w, h), c)
+        button.font = smallButtonFont if c not in oldButtons else oldButtons[c].font
+        if args.c: button.bgcolor = Color("lightskyblue")
+        else:  button.bgcolor = colours[c] if c not in oldButtons else oldButtons[c].bgcolor
         altVowButtons.append(button)
-    if args.c:    
+    if args.c:
+        x = relativeSizing(415)     
         for i,c in enumerate(['7','8','9','H','P']):
-            button = pygbutton.PygButton((415, 640+(i*40), 30, 30), c)
-            button.bgcolor = Color("lightgreen")
+            button = pygbutton.PygButton((x, y+(i*sp), w, h), c)
+            button.font = smallButtonFont if c not in oldButtons else oldButtons[c].font
+            if args.c: button.bgcolor = Color("lightskyblue")
+            else:  button.bgcolor = colours[c] if c not in oldButtons else oldButtons[c].bgcolor
             altVowButtons.append(button)
     # union/intersect button
-    button = pygbutton.PygButton((190,720,30,30),'U'.decode('utf8'))
+    x = relativeSizing(190) 
+    y = relativeSizing(720, 'h')
+    button = pygbutton.PygButton((x,y,w,h),'∩'.decode('utf8') if '∩'.decode('utf8') in oldButtons else 'U'.decode('utf8'))
     button.bgcolor = Color('darkolivegreen2')
     button.font = myfont
     onOffButtons.append(button)
     # side buttons    
-    sideButtons = ['Show All', 'Clear', 'Play', 'Std Dev', 'Dur.Filter','Wrd.Filter', 'Zoom','RemeasureP',
-                    'Cancel', 'Saved', 'Undo', 'Check Last', 'Rmv. Bad', 'Resume'] 
+    sideButtons = ['Show All', 'Clear', 'Play', 'Std Dev', ('Dur.Filter','Rmv.Dur.Filt') ,('Wrd.Filter', 'Rmv.Dur.Filt'),
+                     ('Zoom', 'Reset Zoom'),('RemeasureP', 'RemeasureF', 'Remeasure%'), 'Cancel', ('Saved', 'Save'), 'Undo', 'Check Last', ('Rmv. Bad', 'Rmv. OK'), 'Resume'] 
     lowest = 0
+    x, w = relativeSizing([705,110]) 
+    y = relativeSizing(10, 'h')
     for i,c in enumerate(sideButtons):
-        button = pygbutton.PygButton((705, 10+(i*40), 110, 30), c)
-        lowest = 10+(i*40)+40
-        if button.caption == 'Rmv. Bad': button.bgcolor = Color('red')
-        else: button.bgcolor = Color('darkolivegreen2')
+        if isinstance(c, tuple):
+            c = [capt for capt in c if capt in oldButtons][0] if oldButtons else c[0]
+            print c
+        button = pygbutton.PygButton((x, y+(i*sp), w, h), c)
+        lowest = y+(i*sp)+sp
+        if c in oldButtons:
+            button.bgcolor = oldButtons[c].bgcolor
+            button.font = oldButtons[c].font
+        elif button.caption == 'Rmv. Bad': 
+            button.bgcolor = Color('red')
+        else: 
+            button.bgcolor = Color('darkolivegreen2')
         onOffButtons.append(button)    
     #stress buttons
+    x, w, hzsp = relativeSizing([705,35,37]) #now also calculation for horizontal  spacing (hzsp)
     for i,c in enumerate(['1','2','0']):
-        button = pygbutton.PygButton((705+(i*37),lowest, 35, 30), c)
-        button.bgcolor = Color('darkolivegreen4')
+        button = pygbutton.PygButton((x+(i*hzsp),lowest, w, h), c)
+        button.bgcolor = Color('darkolivegreen4') if (c, 'stress') not in oldButtons else oldButtons[(c, 'stress')].bgcolor 
         onOffButtons.append(button)      
 
     return (vowButtons,onOffButtons,altVowButtons)
@@ -526,31 +580,33 @@ def drawGrid(numFont, plot):
     # draw grid and max/min over plot area
     # horizontal lines are every 100 Hz
     # vertical lines are every 50 Hz 
-    
     # initialize start and end points and the distance between lines
-    intervalH = int(((plot.height-10)/(plot.maxF1-plot.minF1))*50)
-    startH = int(((plot.height-10)/(plot.maxF1-plot.minF1))*(math.ceil(plot.minF1/50.0)*50 - plot.minF1)+10)
-    startV = WINDOWWIDTH - int(((plot.width-10)/(plot.maxF2-plot.minF2))*(math.ceil(plot.minF2/100.0)*100 - plot.minF2) + (WINDOWWIDTH-plot.width))
-    intervalV = int(((plot.width-10)/(plot.maxF2-plot.minF2))*100)
+    vtSpace, vtOffset = relativeSizing([10, 50], 'h')
+    hzSpace, hzOffset = relativeSizing([10,100])
+    intervalH = int(((plot.height-vtSpace)/(plot.maxF1-plot.minF1))*vtOffset)
+    startH = int(((plot.height-vtSpace)/(plot.maxF1-plot.minF1))*(math.ceil(plot.minF1/vtOffset)*vtOffset - plot.minF1)+vtSpace)
+    startV = WINDOWWIDTH - int(((plot.width-hzSpace)/(plot.maxF2-plot.minF2))*(math.ceil(plot.minF2/hzOffset)*hzOffset - plot.minF2) + (WINDOWWIDTH-plot.width))
+    intervalV = int(((plot.width-hzSpace)/(plot.maxF2-plot.minF2))*hzOffset)
     h,v = (0,0)
     # draw horizontal lines
     while True:
         hlimit = startH + h*intervalH
         if hlimit > plot.height: break
-        pygame.draw.line(plot.display,Color('grey87') ,(10,hlimit),(plot.width,hlimit)) 
+        pygame.draw.line(plot.display,Color('grey87') ,(hzSpace,hlimit),(plot.width,hlimit)) 
         h += 1
     # draw vertical lines
     while True:
         vlimit = startV - v*intervalV
-        if vlimit < 10: break
-        pygame.draw.line(plot.display,Color('grey87'),(vlimit,plot.height),(vlimit, 10))
+        if vlimit < vtSpace: break
+        pygame.draw.line(plot.display,Color('grey87'),(vlimit,plot.height),(vlimit, vtSpace))
         v += 1
     # write max and min values for F1 and F2 
     fontMaxMin = [numFont.render(str(int(i)),1,BLACK) for i in plot.maxMin]
-    plot.display.blit(fontMaxMin[0],(plot.width-numFont.size(str(int(plot.minF1)))[0],numFont.size(str(int(plot.minF1)))[1]+10))
-    plot.display.blit(fontMaxMin[1],(plot.width-numFont.size(str(int(plot.minF2)))[0]-10,10))
+    plot.display.blit(fontMaxMin[0],(plot.width-numFont.size(str(int(plot.minF1)))[0],numFont.size(str(int(plot.minF1)))[1]+vtSpace))
+    plot.display.blit(fontMaxMin[1],(plot.width-numFont.size(str(int(plot.minF2)))[0]-hzSpace,vtSpace))
     plot.display.blit(fontMaxMin[2],(plot.width-numFont.size(str(int(plot.maxF1)))[0], plot.height-numFont.size(str(int(plot.minF1)))[1]))
-    plot.display.blit(fontMaxMin[3],(12, 10))
+    hzSpace = relativeSizing(12)
+    plot.display.blit(fontMaxMin[3],(hzSpace, vtSpace))
 
 
 def resize(tempMaxMin, plot):
@@ -609,11 +665,11 @@ def updateDisplayed(displayed, button, plot):
     # according to the arp or celex vowel
     # they represent
     if button.caption in displayed:
-        button.font.set_bold(False)
+        button.font = smallButtonFont
         button._update()
         displayed.remove(button.caption)
     else:
-        button.font.set_bold(True)
+        button.font = boldButtonFont
         button._update()
         displayed += [button.caption]
     plot.textList = []
@@ -693,7 +749,7 @@ def selectRange(plot, sett, pressCTRLA, event):
 def allVowels(plot, sett, showAll = True):
     # displays all vowels to screen if showAll else clears all vowels from screen
     for b in sett.permButtons[0]+sett.permButtons[2]:
-        b.font.set_bold(showAll)
+        b.font = boldButtonFont if showAll else smallButtonFont
         b._update()
     sett.vowList = plot.vowButtons if showAll else []
     plot.arpDisplayed = [b.caption for b in sett.permButtons[0]] if showAll else []
@@ -714,33 +770,36 @@ def togglePlay(sett, button):
         sett.FPS = 10 # resume regular frame rate
         button.bgcolor = Color("darkolivegreen2")
 
-def drawEllipse(sett, plot, button):
-    try:
-        if sett.stdDevCounter == 0:
-            confidenceEllipse([(form.F1,form.F2) for form in sett.vowList],1, plot)
-            sett.stdDevCounter = 1
-            button.caption = 'Std Dev 1'
-            button.bgcolor = Color("darkolivegreen4")
-        elif sett.stdDevCounter == 1:
-            confidenceEllipse([(form.F1,form.F2) for form in sett.vowList],2, plot)
-            sett.stdDevCounter = 2
-            button.caption = 'Std Dev 2'
-        elif sett.stdDevCounter == 2:
-            confidenceEllipse([(form.F1,form.F2) for form in sett.vowList],3, plot)
-            sett.stdDevCounter = 3
-            button.caption = 'Std Dev 3'
-        
-        else:
+def drawEllipse(sett, plot, button, resize = False):
+    if resize and sett.stdDevCounter != 0:
+        confidenceEllipse([(form.F1,form.F2) for form in sett.vowList],sett.stdDevCounter, plot)
+    elif not resize:
+        try:
+            if sett.stdDevCounter == 0:
+                confidenceEllipse([(form.F1,form.F2) for form in sett.vowList],1, plot)
+                sett.stdDevCounter = 1
+                button.caption = 'Std Dev 1'
+                button.bgcolor = Color("darkolivegreen4")
+            elif sett.stdDevCounter == 1:
+                confidenceEllipse([(form.F1,form.F2) for form in sett.vowList],2, plot)
+                sett.stdDevCounter = 2
+                button.caption = 'Std Dev 2'
+            elif sett.stdDevCounter == 2:
+                confidenceEllipse([(form.F1,form.F2) for form in sett.vowList],3, plot)
+                sett.stdDevCounter = 3
+                button.caption = 'Std Dev 3'
+            
+            else:
+                plot.ellip = []
+                button.caption = 'Std Dev'
+                button.bgcolor = Color("darkolivegreen2")
+                sett.stdDevCounter = 0
+        except:
             plot.ellip = []
             button.caption = 'Std Dev'
             button.bgcolor = Color("darkolivegreen2")
             sett.stdDevCounter = 0
-    except:
-        plot.ellip = []
-        button.caption = 'Std Dev'
-        button.bgcolor = Color("darkolivegreen2")
-        sett.stdDevCounter = 0
-    sett.vowelChange = True
+        sett.vowelChange = True
 
 def filterVowels(sett, plot, button):
     # filters vowels by duration or by word
@@ -761,13 +820,13 @@ def filterVowels(sett, plot, button):
         # don't filter anything if no minimum duration is given
         if plot.filtered and not plot.minDur == '': # change button caption 
             button.caption = 'Rmv.Dur.Filt'
-            button.font = pygame.font.SysFont('courier', 14)
+            button.font = smallButtonFont
     else: # filter according to the word
         plot.filtWrd = inputbox.ask(plot.display,'Remove word').strip().upper() # ask user to input word to remove
         plot.filtered = [v for v in sett.vowList if v.word == plot.filtWrd]
         if plot.filtered and plot.filtWrd: 
             button.caption = 'Rmv.Wrd.Filt'
-            button.font = pygame.font.SysFont('courier', 14) 
+            button.font =  smallButtonFont 
 
 def removeFiltered(sett, plot, button):
     # removes filtered vowel tokens (by duration or word, not stress)
@@ -829,14 +888,21 @@ def drawToScreen(sett, plot, NOTPLOTRECTS):
         for r in NOTPLOTRECTS:
             pygame.draw.rect(plot.display,WHITE,r)
 
-    pygame.draw.lines(plot.display,BLACK,True, [(490,plot.height),(plot.width,plot.height),(plot.width,840),(490,840)],2) # draw rectangle to display vowel info
-    pygame.draw.lines(plot.display,BLACK,True, [(10,10),(plot.width,10),(plot.width,plot.height),(10,plot.height)],2) # draw rectangle to display vowel buttons
+    lSide, bSide = [ relativeSizing(490), relativeSizing(840, 'h') ] # relative left and bottom edge of vowel info rectangle
+    pygame.draw.lines(plot.display,BLACK,True, [(lSide,plot.height),(plot.width,plot.height),(plot.width,bSide),(lSide,bSide)],2) # draw rectangle to display vowel info
+    
+    lSide, tSide = [ relativeSizing(10), relativeSizing(10, 'h') ] # relative left and top edge of vowel button rectangle
+    pygame.draw.lines(plot.display,BLACK,True, [(lSide,tSide),(plot.width,tSide),(plot.width,plot.height),(lSide,plot.height)],2) # draw rectangle to display vowel buttons
     tokenNum = myfont.render(str(len(sett.vowList)),1,BLACK) # render and draw the number of tokens currently on the screen 
-    plot.display.blit(tokenNum,(710,820))
-    pygame.draw.lines(plot.display,BLACK,True,[(10,630),(185,630),(185,840),(10,840)],2) # draw the box for the arpabet vowels
-    pygame.draw.lines(plot.display,BLACK,True,[(225,630),(480,630),(480,840),(225,840)],2) #draw the box for the celex vowels 
-    plot.display.blit(sett.celLabel,(320,605)) # draw CELEX 
-    plot.display.blit(sett.arpLabel,(50,605)) # draw ARPABET
+    plot.display.blit(tokenNum,(relativeSizing(710),relativeSizing(820, 'h')))
+
+    rSide, tSide = [relativeSizing(185), relativeSizing(630, 'h')]
+    pygame.draw.lines(plot.display,BLACK,True,[(lSide,tSide),(rSide,tSide),(rSide,bSide),(lSide,bSide)],2) # draw the box for the arpabet vowels
+
+    lSide, rSide = [relativeSizing(225), relativeSizing(480)]
+    pygame.draw.lines(plot.display,BLACK,True,[(lSide,tSide),(rSide,tSide),(rSide,bSide),(lSide,bSide)],2) #draw the box for the celex vowels 
+    plot.display.blit(sett.celLabel,(relativeSizing(320),relativeSizing(605,'h'))) # draw CELEX 
+    plot.display.blit(sett.arpLabel,(relativeSizing(50),relativeSizing(605,'h'))) # draw ARPABET
 
     # draw the minimum duration or the removed word if set
     if (plot.minDur or plot.filtWrd) and plot.filtered:
@@ -853,9 +919,11 @@ def drawToScreen(sett, plot, NOTPLOTRECTS):
         b.draw(plot.display)
     
     if plot.textList:    # draw info for last vowel scrolled over to screen
+        x = relativeSizing(500)
+        y,sp = relativeSizing([605,21], 'h')
         for i,t in enumerate(plot.textList):
             label = textListFont.render(t, 1, BLACK)
-            plot.display.blit(label, (500, 605+(21*i)))
+            plot.display.blit(label, (x, y+(sp*i)))
     
     if sett.chooseFormants: # draw alternate formant buttons (when in choose formant mode)
         for xf in plot.xFormButtons:
@@ -863,13 +931,47 @@ def drawToScreen(sett, plot, NOTPLOTRECTS):
     
     pygame.display.update() # update screen
 
+def resizeScreen(screenSize, plot, sett):
+    global WINDOWWIDTH, WINDOWHEIGHT, myfont, numFont, miniFont, textListFont, smallButtonFont, boldButtonFont
+    # reset widow size
+    WINDOWWIDTH, WINDOWHEIGHT = screenSize
+    # reset plot sizes and the display window
+    plot.height = relativeSizing(600, 'h')
+    plot.width = relativeSizing(700)
+    plot.display = pygame.display.set_mode((WINDOWWIDTH, WINDOWHEIGHT), RESIZABLE)
+    # redefine font sizes
+    myfont = pygame.font.SysFont('helvetica',int(relativeSizing(20, 'h')))    
+    numFont = pygame.font.SysFont('helvetica',int(relativeSizing(15)))
+    miniFont = pygame.font.SysFont('helvetica',int(relativeSizing(12)))
+    textListFont = pygame.font.SysFont('courier',int(relativeSizing(18)))
+    smallButtonFont = pygame.font.SysFont('courier',int(relativeSizing(16)))
+    boldButtonFont = pygame.font.SysFont('courier',int(relativeSizing(16)), bold = True)
+    # remake permanent buttons in the correct spots
+    oldButtons = {b.caption:b for b in sett.permButtons[0]+sett.permButtons[2]} #dict of old button settings when resizing
+    sideButtons = {(b.caption if b.caption not in ['1','2','0'] else (b.caption,'stress')):b for b in sett.permButtons[1]}
+    oldButtons.update(sideButtons)
+    sett.permButtons = makeButtons(oldButtons) 
+    sett.permDisplay = sett.permButtons[0]+sett.permButtons[1]+sett.permButtons[2]
+    # redraw vowel buttons in the correct spots and change size
+    vowWidth, vowHeight = [ relativeSizing(8), relativeSizing(8,'h') ]
+    for v in plot.vowButtons:
+        v.button = makeVowelButton(v, plot,  settings = {'w':vowWidth, 'h':vowHeight, 'bgcol':v.button.bgcolor, 'fgcol':v.button.fgcolor})
+    # redefine text objects with new font sizes
+    sett.F1,sett.F2 = (myfont.render('F1',1,Color('grey87')),myfont.render('F2',1,Color('grey87')))
+    sett.arpLabel = myfont.render('ARPABET',1,BLACK)
+    sett.celLabel = myfont.render('CELEX' if args.c else 'UNREDUCED',1,BLACK)
+    # draw ellipse if required
+    drawEllipse(sett, plot, None, resize = True)
+    # make sure screen updates
+    sett.vowelChange = True
+
 
 def main():
     # this is where the magic happens
     #initialize pygame surfaces and clocks
     pygame.init()    
     FPSCLOCK = pygame.time.Clock()       
-    DISPLAYSURFACE = pygame.display.set_mode((WINDOWWIDTH, WINDOWHEIGHT)) # create window according to dimensions
+    DISPLAYSURFACE = pygame.display.set_mode((WINDOWWIDTH, WINDOWHEIGHT), RESIZABLE) # create window according to dimensions
     plot = plotmishClasses.vowelPlot(DISPLAYSURFACE) 
     NOTPLOTRECTS = (pygame.Rect(plot.width,0,WINDOWWIDTH - plot.width, plot.height),
             pygame.Rect(0,plot.height,WINDOWWIDTH,WINDOWHEIGHT - plot.height))
@@ -886,6 +988,10 @@ def main():
             ## process when quitting the program (hit escape to quit)
             if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
                 quit(sett)           
+            if event.type == VIDEORESIZE:
+                resizeScreen(event.size, plot, sett)
+                NOTPLOTRECTS = (pygame.Rect(plot.width,0,WINDOWWIDTH - plot.width, plot.height),
+                    pygame.Rect(0,plot.height,WINDOWWIDTH,WINDOWHEIGHT - plot.height))
             ## deal with zooming and selecting a range of vowels
             pressed = pygame.key.get_pressed() # get all buttons currently pressed
             pressCTRLA = (pressed[ctrl[0]] or pressed[ctrl[1]]) and pressed[K_a] # boolean indicating if ctrl+a is pressed (for selecting a range) 
@@ -909,7 +1015,7 @@ def main():
                         sett.vowelChange = True
 
                 for b in sett.permButtons[1]: # deal with buttons on right side of the screen
-                    if b.font.get_bold(): b.font.set_bold(False) # makes sure button isn't bolded (happens for some reason ?)
+                    b.font = smallButtonFont # makes sure button isn't bolded (happens for some reason ?)
                     # button says 'Saved' if all changes have been saved and 'Save' otherwise
                     if 'Saved' in b.caption and plot.allLogs != {f[0]:[] for f in sett.files}:
                         b.caption = 'Save'

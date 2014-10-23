@@ -4,7 +4,7 @@ output	/Users/misha/plotmish/log
 overwrite	True
 formant	/Users/misha/Desktop/ep/
 log	/Users/misha/plotmish/log
-keyword	
+keyword	Sara
 praat	/Applications/Praat.app
 pitch tracks	
 mode	True
